@@ -1,0 +1,32 @@
+# Secrets
+.env
+
+# Personal resume source files (add your own, don't commit)
+resume/
+pipeline/resume_base.md
+
+# Generated per-application output (tailored resumes, cover letters, JD analysis)
+applications/
+output/
+
+# Job search data (tracker, Q&A knowledge base, search results)
+jobs/
+
+# Tool credentials and local config
+.herenow/
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Stray temp files
+*.tmp
+C:Users*
