@@ -41,6 +41,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 JOBS_DIR = Path(__file__).parent.parent / "jobs"
+JOBS_DIR.mkdir(parents=True, exist_ok=True)
 TRACKER_FILE = JOBS_DIR / "application_tracker.csv"
 QA_FILE = JOBS_DIR / "application_qa.csv"
 

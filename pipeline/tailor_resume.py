@@ -1,7 +1,7 @@
 """
 Resume Tailoring Pipeline
 =========================
-Analyzes a job description and generates a tailored version of Yury's resume
+Analyzes a job description and generates a tailored version of your resume
 optimized for that specific role. Uses Claude API for intelligent analysis.
 
 Usage:
@@ -36,7 +36,32 @@ APPLICATIONS_DIR.mkdir(exist_ok=True)
 OUTPUT_DIR = SCRIPT_DIR.parent / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-CHROME_PATH = "C:/Program Files/Google/Chrome/Application/chrome.exe"
+def _find_chrome() -> str:
+    """Auto-detect Chrome executable path across platforms."""
+    import platform
+    system = platform.system()
+    candidates = []
+    if system == "Windows":
+        candidates = [
+            "C:/Program Files/Google/Chrome/Application/chrome.exe",
+            "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
+            os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
+        ]
+    elif system == "Darwin":
+        candidates = ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"]
+    else:
+        candidates = [
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
+            "/usr/bin/chromium-browser",
+            "/usr/bin/chromium",
+        ]
+    for c in candidates:
+        if Path(c).exists():
+            return c
+    return candidates[0]  # fall back to first candidate; error handled at call site
+
+CHROME_PATH = _find_chrome()
 
 
 # ── Claude client ──────────────────────────────────────────────────────────────
@@ -70,9 +95,9 @@ Return a JSON object with exactly these fields:
   "keywords_ats": ["exact keywords/phrases for ATS matching — pull directly from the JD text"],
   "core_responsibilities": ["3-5 main things this person will actually do day-to-day"],
   "domain": "Industry or domain focus (e.g., Insurance, FinTech, Healthcare, General, SaaS, etc.)",
-  "match_score": "0-100 integer — how well does Yury's background match based on: 15yr eng exp, AI/LLM/RAG/Agentic AI expert, Python/FastAPI, Next.js/React, Docker/K8s, prior Principal/Lead roles",
-  "match_gaps": ["skills or experiences in the JD that Yury may lack or should emphasize more"],
-  "resume_angles": ["2-3 specific angles to highlight in Yury's resume for this role"]
+  "match_score": "0-100 integer — how well does the candidate's background match this role based on the BASE RESUME provided",
+  "match_gaps": ["skills or experiences in the JD that the candidate may lack or should emphasize more"],
+  "resume_angles": ["2-3 specific angles to highlight in the candidate's resume for this role"]
 }}
 
 Return only valid JSON, no markdown fences, no explanation.
@@ -95,9 +120,6 @@ def analyze_jd(client: anthropic.Anthropic, jd_text: str) -> dict:
 # ── Step 2: Generate tailored resume ──────────────────────────────────────────
 TAILOR_PROMPT = """\
 You are an elite resume writer specializing in AI/tech roles. Your task is to rewrite the candidate's resume to perfectly target a specific job, maximizing ATS score and recruiter impact — without fabricating any experience.
-
-CANDIDATE: Yury Primakov | Principal AI Engineer | Holmdel, NJ
-yuryprimakov.com | yprimakov@gmail.com | 718-757-6477
 
 BASE RESUME:
 {base_resume}
@@ -146,21 +168,39 @@ def tailor_resume(client: anthropic.Anthropic, base_resume: str, analysis: dict)
     return response.content[0].text.strip()
 
 
+# ── Resume header parser ───────────────────────────────────────────────────────
+def parse_resume_header(resume_md: str) -> dict:
+    """Extract name, title, and raw contact line from the resume markdown header."""
+    result = {"name": "", "title": "", "contact": ""}
+    for line in resume_md.splitlines():
+        s = line.strip()
+        if s.startswith("# ") and not result["name"]:
+            result["name"] = s[2:].strip()
+        elif s.startswith("### ") and not result["title"]:
+            result["title"] = s[4:].strip()
+        elif "&nbsp;" in s and not result["contact"]:
+            result["contact"] = s
+        if result["name"] and result["title"] and result["contact"]:
+            break
+    return result
+
+
 # ── Step 3: Generate cover letter snippet (optional) ──────────────────────────
 COVER_PROMPT = """\
-Write a compelling 3-paragraph cover letter opening for Yury Primakov applying to the role below.
+Write a compelling 3-paragraph cover letter opening for a candidate applying to the role below.
 Keep it punchy and specific — reference exact details from the JD. No generic fluff.
 
+CANDIDATE NAME: {candidate_name}
 JOB: {job_title} at {company}
 KEY REQUIREMENTS: {requirements}
 CORE RESPONSIBILITIES: {responsibilities}
 
-Yury's most relevant angles for this role: {angles}
+Most relevant angles for this role: {angles}
 
 Format: 3 short paragraphs. No salutation, no sign-off. Just the body copy.
 """
 
-def generate_cover_snippet(client: anthropic.Anthropic, analysis: dict) -> str:
+def generate_cover_snippet(client: anthropic.Anthropic, analysis: dict, candidate_name: str = "") -> str:
     print("> Generating cover letter snippet...")
     response = client.messages.create(
         model="claude-opus-4-6",
@@ -169,6 +209,7 @@ def generate_cover_snippet(client: anthropic.Anthropic, analysis: dict) -> str:
             {
                 "role": "user",
                 "content": COVER_PROMPT.format(
+                    candidate_name=candidate_name or "the candidate",
                     job_title=analysis.get("job_title", "AI Engineer"),
                     company=analysis.get("company", "the company"),
                     requirements=", ".join(analysis.get("key_requirements", [])[:5]),
@@ -185,6 +226,25 @@ def generate_cover_snippet(client: anthropic.Anthropic, analysis: dict) -> str:
 def build_html(resume_md: str, job_title: str, company: str) -> str:
     """Convert the tailored resume markdown into a styled, print-ready HTML file."""
     import html as html_lib
+
+    header = parse_resume_header(resume_md)
+    candidate_name = header["name"] or "Candidate"
+    candidate_title = header["title"] or job_title
+
+    # Parse contact line: "site · email · phone · location"
+    contact_parts = []
+    if header["contact"]:
+        raw_parts = re.split(r"&nbsp;·&nbsp;", header["contact"])
+        for part in raw_parts:
+            part = part.strip()
+            if part.startswith("<div") or part.startswith("</div") or not part:
+                continue
+            contact_parts.append(part)
+
+    # Split name into first + last for the blue-last-name styling
+    name_parts = candidate_name.split(None, 1)
+    first_name = html_lib.escape(name_parts[0]) if name_parts else ""
+    last_name = html_lib.escape(name_parts[1]) if len(name_parts) > 1 else ""
 
     # Extract sections from the markdown
     def between(text, start_marker, end_marker=None):
@@ -271,11 +331,22 @@ def build_html(resume_md: str, job_title: str, company: str) -> str:
     edu_html = "\n".join(f"<p>{html_lib.escape(l)}</p>" for l in education_lines if l)
     cert_html = "\n".join(f"<p>{html_lib.escape(l)}</p>" for l in cert_lines if l)
 
+    # Build contact bar HTML from parsed parts
+    contact_html_parts = []
+    for part in contact_parts:
+        if part.startswith("http") or "." in part.split("@")[0] if "@" not in part else False:
+            contact_html_parts.append(f'<a href="https://{html_lib.escape(part)}">{html_lib.escape(part)}</a>')
+        elif "@" in part:
+            contact_html_parts.append(f'<a href="mailto:{html_lib.escape(part)}">{html_lib.escape(part)}</a>')
+        else:
+            contact_html_parts.append(html_lib.escape(part))
+    contact_bar = ' <span class="sep">·</span> '.join(contact_html_parts)
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Yury Primakov — {html_lib.escape(job_title)}</title>
+<title>{first_name} {last_name} — {html_lib.escape(job_title)}</title>
 <style>
   /* ── Page setup: consistent margins on ALL pages via @page ── */
   @page {{
@@ -337,17 +408,9 @@ def build_html(resume_md: str, job_title: str, company: str) -> str:
 </head>
 <body>
 <div class="header">
-  <h1>Yury <span>Primakov</span></h1>
-  <div class="title">{html_lib.escape(job_title)}</div>
-  <div class="contact">
-    <a href="https://yuryprimakov.com">yuryprimakov.com</a>
-    <span class="sep">·</span>
-    <a href="mailto:yprimakov@gmail.com">yprimakov@gmail.com</a>
-    <span class="sep">·</span>
-    718-757-6477
-    <span class="sep">·</span>
-    Holmdel, NJ
-  </div>
+  <h1>{first_name} <span>{last_name}</span></h1>
+  <div class="title">{html_lib.escape(candidate_title)}</div>
+  <div class="contact">{contact_bar}</div>
 </div>
 <div class="section-header">Professional Summary</div>
 <div class="summary">{html_lib.escape(summary_text.strip())}</div>
@@ -524,7 +587,7 @@ def save_job_folder(
 # ── Main ───────────────────────────────────────────────────────────────────────
 def main():
     parser = argparse.ArgumentParser(
-        description="Tailor Yury's resume to a specific job description using Claude."
+        description="Tailor your resume to a specific job description using Claude."
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--jd", type=Path, help="Path to job description text file")
@@ -553,7 +616,12 @@ def main():
 
     # Load base resume
     if not BASE_RESUME.exists():
-        sys.exit(f"Error: Base resume not found at {BASE_RESUME}")
+        example = BASE_RESUME.parent / "resume_base.example.md"
+        sys.exit(
+            f"Error: Base resume not found at {BASE_RESUME}\n"
+            f"Copy the template and fill in your details:\n"
+            f"  cp {example} {BASE_RESUME}"
+        )
     base_resume = BASE_RESUME.read_text(encoding="utf-8")
 
     # Initialize Claude client
@@ -575,9 +643,10 @@ def main():
 
     tailored = tailor_resume(client, base_resume, analysis)
 
+    candidate_name = parse_resume_header(base_resume)["name"]
     cover = ""
     if not args.no_cover:
-        cover = generate_cover_snippet(client, analysis)
+        cover = generate_cover_snippet(client, analysis, candidate_name)
 
     # Save everything to per-job folder
     job_dir = save_job_folder(jd_text, analysis, tailored, cover)
