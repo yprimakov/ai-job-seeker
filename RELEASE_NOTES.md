@@ -2,6 +2,34 @@
 
 ---
 
+## v0.9.0 — 2026-03-17
+
+### Full Cover Letter Generator (`pipeline/cover_letter.py`)
+
+- **New: `pipeline/cover_letter.py`** — Generates a complete, submission-ready 3-paragraph cover letter via Claude Opus. Auto-loads `analysis.json` and `job_description.txt` from the matching `applications/` folder when available. Saves to `cover_letter_full.md` alongside the tailored resume. `--stdout` flag for quick preview.
+
+---
+
+## v0.8.0 — 2026-03-17
+
+### Response Tracking + Analytics (`pipeline/response_tracker.py`)
+
+- **Updated: `tracker.py`** — Added `Date Response Received` and `Response Type` columns to `TRACKER_HEADERS`. Added `log-response` command to manually record a response. Added `stats` command: response rate by work mode, easy apply vs direct, response type breakdown, average days to response.
+
+- **New: `pipeline/response_tracker.py`** — Polls `leoprime.dev@gmail.com` for replies from applied companies. Matches sender domain to company name using subdomain stripping + token overlap; handles ATS notification domains (Greenhouse, Lever, Workday, etc.) by extracting company name from Subject. Classifies responses (Phone Screen / Interview / Assessment / Offer / Rejected / Other) via Claude Haiku batch call. Updates tracker CSV in place. `--dry-run`, `--install` (Task Scheduler, daily at 09:05), `--setup` (Gmail OAuth).
+
+---
+
+## v0.7.0 — 2026-03-17
+
+### LinkedIn Job Scraper (`pipeline/linkedin_scraper.py`)
+
+- **New: `pipeline/linkedin_scraper.py`** — LinkedIn job discovery in two modes:
+  - **Module mode** (Claude browser session): `SCRAPE_JOBS_JS` extracts all job cards from the current LinkedIn search page with multiple fallback selectors. `NEXT_PAGE_JS` paginates. `LOGIN_CHECK_JS` verifies auth state. `build_search_url()` constructs search URLs with remote/easy-apply/date filters. `score_jobs()` uses Claude Haiku to score each job 1-5 against Yury's profile with fit reason and gap notes. `save_results()` writes a ranked markdown table to `jobs/linkedin_results.md`.
+  - **CLI mode** (standalone): `python pipeline/linkedin_scraper.py --query "..." --pages 3 --remote --easy-apply` — uses Playwright in headed mode for authenticated scraping. Requires `pip install playwright && playwright install chromium`.
+
+---
+
 ## v0.6.0 — 2026-03-17
 
 ### Application Folder as Source of Truth (`tracker.py repair`)

@@ -16,6 +16,6 @@
 
 ## P3 — Strategic
 
-- [ ] **J. LinkedIn Job Scraping Pipeline** — Automate job discovery: run search queries, extract job cards, score against profile with Claude, output ranked shortlist.
-- [ ] **K. Response Tracking + Feedback Loop** — Add `Date Response Received` + `Response Type` to tracker. When leoprime.dev receives a reply from an applied company, auto-update the row. Correlate response rates with match score, resume angle, ATS, salary range over time.
-- [ ] **L. Full Cover Letter Generator** — For non-Easy-Apply jobs with a cover letter field, generate a full 3-paragraph personalized letter (separate prompt) rather than just a snippet.
+- [x] **J. LinkedIn Job Scraping Pipeline** — Automate job discovery: run search queries, extract job cards, score against profile with Claude, output ranked shortlist.
+- [x] **K. Response Tracking + Feedback Loop** — Add `Date Response Received` + `Response Type` to tracker. When leoprime.dev receives a reply from an applied company, auto-update the row. Correlate response rates with match score, resume angle, ATS, salary range over time.
+- [x] **L. Full Cover Letter Generator** — For non-Easy-Apply jobs with a cover letter field, generate a full 3-paragraph personalized letter (separate prompt) rather than just a snippet.

@@ -50,6 +50,7 @@ TRACKER_HEADERS = [
     "Date Applied", "Company", "Job Title", "LinkedIn URL", "Work Mode",
     "Salary Range", "Easy Apply", "Application Status", "Notes",
     "Tailored Resume File", "Follow Up Date",
+    "Date Response Received", "Response Type",
 ]
 QA_HEADERS = [
     "Question ID", "Question", "Context (where it appeared)",
@@ -308,6 +309,89 @@ def cmd_update_status(args):
     print(f"[ok] Status updated to '{args.status}' for {args.title} @ {args.company}")
 
 
+def cmd_log_response(args):
+    """Record a recruiter/company response against an existing application row."""
+    rows = read_csv(TRACKER_FILE, TRACKER_HEADERS)
+    updated = False
+    for row in rows:
+        if (row.get("Company", "").lower() == args.company.lower() and
+                row.get("Job Title", "").lower() == args.title.lower()):
+            row["Date Response Received"] = args.date or datetime.now().strftime("%Y-%m-%d")
+            row["Response Type"] = args.response_type
+            row["Application Status"] = args.response_type  # keep status in sync
+            row["Notes"] = args.notes or row.get("Notes", "")
+            updated = True
+            break
+    if not updated:
+        sys.exit(f"Error: No matching application found for {args.title} @ {args.company}")
+    write_csv(TRACKER_FILE, TRACKER_HEADERS, rows)
+    print(f"[ok] Response recorded: {args.response_type} from {args.company} on {row['Date Response Received']}")
+
+
+def cmd_stats(args):
+    """Print response rate analytics across all logged applications."""
+    rows = read_csv(TRACKER_FILE, TRACKER_HEADERS)
+    if not rows:
+        print("No applications logged yet.")
+        return
+
+    total = len(rows)
+    responded = [r for r in rows if r.get("Date Response Received", "").strip()]
+    response_rate = len(responded) / total * 100 if total else 0
+
+    print(f"\n=== Application Stats ({total} total) ===\n")
+    print(f"  Response rate: {len(responded)}/{total} ({response_rate:.0f}%)\n")
+
+    # By response type
+    from collections import Counter
+    type_counts = Counter(r.get("Response Type", "").strip() for r in responded if r.get("Response Type", "").strip())
+    if type_counts:
+        print("  By response type:")
+        for rtype, count in type_counts.most_common():
+            print(f"    {rtype:<25} {count}")
+        print()
+
+    # By Work Mode
+    mode_stats: dict[str, dict] = {}
+    for r in rows:
+        mode = r.get("Work Mode", "Unknown") or "Unknown"
+        if mode not in mode_stats:
+            mode_stats[mode] = {"total": 0, "responded": 0}
+        mode_stats[mode]["total"] += 1
+        if r.get("Date Response Received", "").strip():
+            mode_stats[mode]["responded"] += 1
+    print("  By work mode:")
+    for mode, s in sorted(mode_stats.items()):
+        rate = s["responded"] / s["total"] * 100 if s["total"] else 0
+        print(f"    {mode:<12} {s['responded']}/{s['total']} ({rate:.0f}%)")
+    print()
+
+    # By Easy Apply vs direct
+    ea_rows = [r for r in rows if r.get("Easy Apply") == "Yes"]
+    dir_rows = [r for r in rows if r.get("Easy Apply") != "Yes"]
+    ea_resp  = sum(1 for r in ea_rows if r.get("Date Response Received", "").strip())
+    dir_resp = sum(1 for r in dir_rows if r.get("Date Response Received", "").strip())
+    if ea_rows:
+        print(f"  Easy Apply:  {ea_resp}/{len(ea_rows)} responded ({ea_resp/len(ea_rows)*100:.0f}%)")
+    if dir_rows:
+        print(f"  Direct:      {dir_resp}/{len(dir_rows)} responded ({dir_resp/len(dir_rows)*100:.0f}%)")
+    print()
+
+    # Avg days to response
+    delays = []
+    for r in responded:
+        try:
+            applied = datetime.strptime(r["Date Applied"], "%Y-%m-%d")
+            received = datetime.strptime(r["Date Response Received"], "%Y-%m-%d")
+            delays.append((received - applied).days)
+        except (ValueError, KeyError):
+            pass
+    if delays:
+        print(f"  Avg days to response: {sum(delays)/len(delays):.1f} days")
+        print(f"  Fastest: {min(delays)}d  |  Slowest: {max(delays)}d")
+    print()
+
+
 def cmd_repair(args):
     """Backfill missing Tailored Resume File paths from the applications/ folder."""
     rows = read_csv(TRACKER_FILE, TRACKER_HEADERS)
@@ -376,6 +460,18 @@ def main():
     # repair
     sub.add_parser("repair", help="Backfill missing resume file paths from applications/ folder")
 
+    # log-response
+    p_lr = sub.add_parser("log-response", help="Record a company response to an application")
+    p_lr.add_argument("--company", required=True)
+    p_lr.add_argument("--title", required=True)
+    p_lr.add_argument("--response-type", required=True,
+                      help="e.g. Phone Screen, Interview, Offer, Rejected, Assessment, Ghosted")
+    p_lr.add_argument("--date", help="Date received (YYYY-MM-DD), defaults to today")
+    p_lr.add_argument("--notes")
+
+    # stats
+    sub.add_parser("stats", help="Show response rate analytics across all applications")
+
     args = parser.parse_args()
     {
         "log": cmd_log,
@@ -386,6 +482,8 @@ def main():
         "lookup": cmd_lookup,
         "update-status": cmd_update_status,
         "repair": cmd_repair,
+        "log-response": cmd_log_response,
+        "stats": cmd_stats,
     }[args.command](args)
 
 
