@@ -1,11 +1,7 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { Document, Page, pdfjs } from 'react-pdf'
-import { X, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
-
-// Use CDN worker to avoid bundling complexity
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`
+import { useState } from 'react'
+import { X, ZoomIn, ZoomOut, ExternalLink } from 'lucide-react'
 
 interface PdfModalProps {
   url: string
@@ -13,76 +9,62 @@ interface PdfModalProps {
 }
 
 export function PdfModal({ url, onClose }: PdfModalProps) {
-  const [numPages, setNumPages] = useState<number>(0)
-  const [pageNumber, setPageNumber] = useState(1)
-  const [scale, setScale] = useState(1.2)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  // zoom is applied as a URL fragment hint for the browser PDF viewer
+  const [zoom, setZoom] = useState(100)
 
-  const onLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
-    setNumPages(numPages)
-    setLoading(false)
-  }, [])
+  const zoomIn  = () => setZoom(z => Math.min(200, z + 25))
+  const zoomOut = () => setZoom(z => Math.max(50,  z - 25))
 
-  const onLoadError = useCallback((err: Error) => {
-    setError(err.message)
-    setLoading(false)
-  }, [])
+  // The #zoom= fragment is supported by Chrome/Edge's built-in PDF viewer
+  const iframeSrc = `${url}#toolbar=1&navpanes=1&zoom=${zoom}`
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="relative flex flex-col w-full max-w-4xl max-h-[92vh] mx-4 rounded-2xl overflow-hidden"
-        style={{ background: 'rgba(2,6,23,0.95)', border: '1px solid rgba(255,255,255,0.1)' }}>
-
+      <div
+        className="relative flex flex-col w-full max-w-4xl mx-4"
+        style={{
+          height: '90vh',
+          background: 'rgba(2,6,23,0.97)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 16,
+          overflow: 'hidden',
+        }}
+      >
         {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-3">
-            {/* Zoom controls */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 shrink-0">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setScale(s => Math.max(0.5, +(s - 0.2).toFixed(1)))}
-              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+              onClick={zoomOut}
+              disabled={zoom <= 50}
+              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground disabled:opacity-30"
               title="Zoom out"
             >
-              <ZoomOut size={15} />
+              <ZoomOut size={14} />
             </button>
-            <span className="text-xs font-mono text-muted-foreground w-12 text-center">
-              {Math.round(scale * 100)}%
+            <span className="text-xs font-mono text-muted-foreground w-12 text-center select-none">
+              {zoom}%
             </span>
             <button
-              onClick={() => setScale(s => Math.min(3, +(s + 0.2).toFixed(1)))}
-              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+              onClick={zoomIn}
+              disabled={zoom >= 200}
+              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground disabled:opacity-30"
               title="Zoom in"
             >
-              <ZoomIn size={15} />
+              <ZoomIn size={14} />
             </button>
-
-            {/* Page navigation */}
-            {numPages > 1 && (
-              <div className="flex items-center gap-2 ml-2 border-l border-white/10 pl-3">
-                <button
-                  onClick={() => setPageNumber(p => Math.max(1, p - 1))}
-                  disabled={pageNumber <= 1}
-                  className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground disabled:opacity-30"
-                >
-                  <ChevronLeft size={14} />
-                </button>
-                <span className="text-xs text-muted-foreground">
-                  {pageNumber} / {numPages}
-                </span>
-                <button
-                  onClick={() => setPageNumber(p => Math.min(numPages, p + 1))}
-                  disabled={pageNumber >= numPages}
-                  className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground disabled:opacity-30"
-                >
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            )}
+            <span className="text-xs text-muted-foreground/40 mx-1">|</span>
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ExternalLink size={12} /> Open in new tab
+            </a>
           </div>
-
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
@@ -91,34 +73,13 @@ export function PdfModal({ url, onClose }: PdfModalProps) {
           </button>
         </div>
 
-        {/* PDF viewer */}
-        <div className="flex-1 overflow-auto flex items-start justify-center py-6 px-4">
-          {loading && (
-            <div className="flex items-center gap-2 text-muted-foreground py-20">
-              <Loader2 size={16} className="animate-spin" />
-              <span className="text-sm">Loading PDF...</span>
-            </div>
-          )}
-          {error && (
-            <div className="text-red-400 text-sm py-20 text-center">
-              Failed to load PDF: {error}
-            </div>
-          )}
-          <Document
-            file={url}
-            onLoadSuccess={onLoadSuccess}
-            onLoadError={onLoadError}
-            loading=""
-          >
-            <Page
-              pageNumber={pageNumber}
-              scale={scale}
-              renderTextLayer
-              renderAnnotationLayer
-              className="shadow-2xl"
-            />
-          </Document>
-        </div>
+        {/* PDF iframe — browser renders with native viewer (Chrome/Edge) */}
+        <iframe
+          key={zoom} // remount on zoom change so the fragment updates
+          src={iframeSrc}
+          className="flex-1 w-full border-0"
+          title="Resume PDF"
+        />
       </div>
     </div>
   )

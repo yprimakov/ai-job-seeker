@@ -4,6 +4,7 @@ import path from 'path'
 
 export const dynamic = 'force-dynamic'
 
+// Project root is one level above command-center/
 const ROOT = path.resolve(process.cwd(), '..')
 
 const ALLOWED_ROOTS = [
@@ -17,11 +18,18 @@ export async function GET(req: NextRequest) {
     return new NextResponse('Missing path parameter', { status: 400 })
   }
 
-  const resolved = path.resolve(filePath)
+  // Resolve relative paths against project ROOT, not command-center CWD
+  const resolved = path.isAbsolute(filePath)
+    ? path.resolve(filePath)
+    : path.resolve(ROOT, filePath)
 
-  // Case-insensitive comparison for Windows compatibility
+  // Case-insensitive startsWith for Windows path comparison
   const resolvedLower = resolved.toLowerCase()
-  const allowed = ALLOWED_ROOTS.some(root => resolvedLower.startsWith(root.toLowerCase()))
+  const allowed = ALLOWED_ROOTS.some(root =>
+    resolvedLower.startsWith(root.toLowerCase() + path.sep) ||
+    resolvedLower === root.toLowerCase()
+  )
+
   if (!allowed) {
     return new NextResponse('Forbidden', { status: 403 })
   }
@@ -37,9 +45,9 @@ export async function GET(req: NextRequest) {
 
   const ext = path.extname(resolved).toLowerCase()
   const mimeTypes: Record<string, string> = {
-    '.pdf': 'application/pdf',
-    '.md': 'text/markdown; charset=utf-8',
-    '.txt': 'text/plain; charset=utf-8',
+    '.pdf':  'application/pdf',
+    '.md':   'text/markdown; charset=utf-8',
+    '.txt':  'text/plain; charset=utf-8',
     '.json': 'application/json',
     '.html': 'text/html; charset=utf-8',
   }

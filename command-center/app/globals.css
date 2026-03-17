@@ -109,42 +109,47 @@
   will-change: transform;
 }
 
-/* White orb */
+/* White orb — hidden at rest, fades in on hover */
 .spotlight-card::before {
-  width: 320px;
-  height: 320px;
-  left: -160px;
-  top: -160px;
-  background: rgba(248, 250, 252, 1);
-  filter: blur(100px);
-  opacity: 0.10;
-  z-index: 1;
-  transform: translate(var(--mouse-x, 0px), var(--mouse-y, 0px));
-}
-
-/* Violet orb */
-.spotlight-card::after {
-  width: 384px;
-  height: 384px;
-  left: -192px;
-  top: -192px;
-  filter: blur(100px);
+  width: 400px;
+  height: 400px;
+  left: -200px;
+  top: -200px;
+  background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%);
+  filter: blur(60px);
   opacity: 0;
   z-index: 1;
   transform: translate(var(--mouse-x, 0px), var(--mouse-y, 0px));
-  transition: opacity 500ms ease;
+  transition: opacity 600ms ease;
+}
+
+/* Tinted orb — hidden at rest, fades in on hover */
+.spotlight-card::after {
+  width: 480px;
+  height: 480px;
+  left: -240px;
+  top: -240px;
+  filter: blur(80px);
+  opacity: 0;
+  z-index: 1;
+  transform: translate(var(--mouse-x, 0px), var(--mouse-y, 0px));
+  transition: opacity 600ms ease;
 }
 
 .dark .spotlight-card::after {
-  background: rgb(139, 92, 246);
+  background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
 }
 
 :not(.dark) .spotlight-card::after {
-  background: rgb(237, 233, 254);
+  background: radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%);
+}
+
+.spotlight-card:hover::before {
+  opacity: 1;
 }
 
 .spotlight-card:hover::after {
-  opacity: 0.15;
+  opacity: 1;
 }
 
 /* ── Glassmorphic card wrapper ───────────────────────────────────────────── */
