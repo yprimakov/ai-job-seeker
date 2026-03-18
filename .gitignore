@@ -15,6 +15,19 @@ jobs/
 # Tool credentials and local config
 .herenow/
 .claude/
+pipeline/gmail_credentials.json
+pipeline/gmail_token.json
+
+# Next.js build output
+command-center/.next/
+command-center/out/
+
+# Node modules
+node_modules/
+command-center/node_modules/
+
+# Brand assets (local design files, not part of the deployable project)
+brand/
 
 # Python
 __pycache__/
@@ -29,4 +42,4 @@ Thumbs.db
 
 # Stray temp files
 *.tmp
-C:Users*
+*.bat
