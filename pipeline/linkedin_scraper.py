@@ -551,22 +551,33 @@ def _cli_main() -> None:
     all_jobs: list[dict] = []
     seen_ids: set[str] = set()
 
+    # Persistent user data dir so LinkedIn session survives between scraper runs.
+    # First run: log in once in the browser window. Subsequent runs: already logged in.
+    user_data_dir = Path.home() / ".job-seeker-linkedin"
+    user_data_dir.mkdir(exist_ok=True)
+
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=False)
-        context = browser.new_context(viewport={"width": 1280, "height": 900})
+        # launch_persistent_context saves cookies + localStorage to disk
+        context = pw.chromium.launch_persistent_context(
+            str(user_data_dir),
+            headless=False,
+            viewport={"width": 1280, "height": 900},
+            args=["--start-maximized"],
+        )
         page = context.new_page()
 
         print(f"Navigating to LinkedIn search: {search_url}")
         page.goto(search_url, wait_until="domcontentloaded")
 
-        # Give user time to log in if needed
+        # Give cookies a moment to settle
         page.wait_for_timeout(3000)
 
         login_state = page.evaluate(LOGIN_CHECK_JS)
         if not login_state.get("loggedIn"):
             print(
                 "You do not appear to be logged in to LinkedIn. "
-                "Please log in using the browser window, then press Enter here to continue."
+                "Please log in using the browser window, then press Enter here to continue.\n"
+                "(Your session will be saved so you won't be asked again next time.)"
             )
             input()
 
@@ -602,7 +613,7 @@ def _cli_main() -> None:
                     break
                 page.wait_for_timeout(2000)
 
-        browser.close()
+        context.close()
 
     if not all_jobs:
         print("No jobs scraped. Check your search terms or LinkedIn session.")

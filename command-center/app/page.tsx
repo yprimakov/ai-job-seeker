@@ -97,9 +97,11 @@ export default function Dashboard() {
         <MetricCard label="Active Pipeline" value={a.active ?? 0} icon={Activity}
           sub="not rejected/ghosted" />
         <MetricCard label="Follow-ups Due" value={a.followUpDue ?? 0} icon={Clock}
-          warning={!!a.followUpDue} sub="today or overdue" />
+          warning={!!a.followUpDue} sub="today or overdue"
+          href="/applications?due=1" />
         <MetricCard label="Unanswered Q&A" value={a.unansweredQA ?? 0} icon={HelpCircle}
-          warning={!!a.unansweredQA} sub="needs your input" />
+          warning={!!a.unansweredQA} sub="needs your input"
+          href="/qa" />
       </div>
 
       {/* Charts + Activity row */}

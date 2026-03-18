@@ -6,8 +6,8 @@ resume/
 pipeline/resume_base.md
 
 # Generated per-application output (tailored resumes, cover letters, JD analysis)
-applications/
-output/
+/applications/
+/output/
 
 # Job search data (tracker, Q&A knowledge base, search results)
 jobs/

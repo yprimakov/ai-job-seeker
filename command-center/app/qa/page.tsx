@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import useSWR from 'swr'
-import { Plus, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Search } from 'lucide-react'
 import { SpotlightCard } from '@/components/SpotlightCard'
 import { useWS } from '@/lib/ws-client'
 import { formatDate, type QARow } from '@/lib/utils'
@@ -87,9 +87,29 @@ export default function QAPage() {
   const [newQ, setNewQ] = useState('')
   const [newCtx, setNewCtx] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filterTab, setFilterTab] = useState<'all' | 'unanswered' | 'answered'>('all')
 
-  const unanswered = rows.filter(r => !r.Answer)
-  const answered = rows.filter(r => !!r.Answer)
+  const allUnanswered = rows.filter(r => !r.Answer)
+  const allAnswered = rows.filter(r => !!r.Answer)
+
+  const filtered = useMemo(() => {
+    let r = filterTab === 'unanswered' ? allUnanswered
+      : filterTab === 'answered' ? allAnswered
+      : rows
+    if (search) {
+      const q = search.toLowerCase()
+      r = r.filter(row =>
+        row.Question?.toLowerCase().includes(q) ||
+        row.Answer?.toLowerCase().includes(q) ||
+        row['Context (where it appeared)']?.toLowerCase().includes(q)
+      )
+    }
+    return r
+  }, [rows, search, filterTab, allUnanswered, allAnswered])
+
+  const unanswered = allUnanswered
+  const answered = allAnswered
 
   async function addQuestion() {
     if (!newQ.trim()) return
@@ -123,28 +143,48 @@ export default function QAPage() {
         </button>
       </div>
 
-      {/* Unanswered */}
-      {unanswered.length > 0 && (
+      {/* Search + filter tabs */}
+      <SpotlightCard>
+        <div className="p-3 flex flex-wrap gap-3 items-center">
+          <div className="relative flex-1 min-w-48">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search questions, answers, context..."
+              className="w-full pl-8 pr-3 py-2 text-sm rounded-lg bg-secondary/60 border border-border/60
+                focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex rounded-lg border border-border/60 overflow-hidden text-sm">
+            {([
+              ['all', `All (${rows.length})`],
+              ['unanswered', `Unanswered (${unanswered.length})`],
+              ['answered', `Answered (${answered.length})`],
+            ] as const).map(([val, label]) => (
+              <button key={val} onClick={() => setFilterTab(val)}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                  filterTab === val
+                    ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60'
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </SpotlightCard>
+
+      {/* Results */}
+      {filtered.length > 0 ? (
         <div className="space-y-3">
-          <h2 className="text-xs font-semibold text-orange-600 dark:text-orange-400 uppercase tracking-wider flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse inline-block" />
-            Needs Your Answer ({unanswered.length})
-          </h2>
-          {unanswered.map(row => (
+          {filtered.map(row => (
             <QARowItem key={row._id} row={row} onSave={() => mutate()} />
           ))}
         </div>
-      )}
-
-      {/* Answered */}
-      {answered.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Answered ({answered.length})
-          </h2>
-          {answered.map(row => (
-            <QARowItem key={row._id} row={row} onSave={() => mutate()} />
-          ))}
+      ) : (
+        <div className="py-8 text-center text-muted-foreground text-sm">
+          No questions match your search.
         </div>
       )}
 
