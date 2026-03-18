@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST() {
   const scriptPath = path.join(os.homedir(), '.agents', 'skills', 'here-now', 'scripts', 'publish.sh')
-  const port = process.env.PORT || '3000'
+  const port = process.env.PORT || '3051'
 
   // Publish the local server URL via here.now
   return new Promise<NextResponse>(resolve => {

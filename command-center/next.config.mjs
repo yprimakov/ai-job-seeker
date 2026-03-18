@@ -2,7 +2,7 @@
 
 const nextConfig = {
   reactStrictMode: true,
-  experimental: { serverActions: { allowedOrigins: ['localhost:3000'] } },
+  experimental: { serverActions: { allowedOrigins: ['localhost:3051'] } },
 }
 
 export default nextConfig

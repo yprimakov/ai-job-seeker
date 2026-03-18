@@ -9,7 +9,7 @@ const fs = require('fs')
 const { spawn } = require('child_process')
 
 const dev = process.env.NODE_ENV !== 'production'
-const port = parseInt(process.env.PORT || '3000', 10)
+const port = parseInt(process.env.PORT || '3051', 10)
 
 const ROOT = path.join(__dirname, '..')
 const QUEUE_PATH = path.join(ROOT, 'jobs', 'queue.json')

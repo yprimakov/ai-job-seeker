@@ -232,7 +232,7 @@ CANDIDATE_WEBSITE=yoursite.com
 
 # Optional
 COMMAND_CENTER_PASSWORD=your-password  # Enables login page
-PORT=3000`}
+PORT=3051`}
           </CodeBlock>
         </div>
       </div>
