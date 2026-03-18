@@ -34,34 +34,45 @@ export function Sidebar({ wsConnected = true }: { wsConnected?: boolean }) {
         collapsed ? 'w-16' : 'w-60',
       )}
     >
-      {/* Logo */}
+      {/* Logo / brand */}
       <div className={cn(
         'flex items-center border-b border-border/40 shrink-0',
-        collapsed ? 'justify-center p-4' : 'px-5 py-4',
+        collapsed ? 'justify-center p-3' : 'px-4 py-3',
       )}>
         {!collapsed ? (
-          <div className="flex items-center gap-0 min-w-0">
+          <div className="min-w-0">
+            {/* iMadeFire brand logo */}
             <Image
               src="/logo-dark.svg"
               alt="iMadeFire"
-              width={120}
-              height={24}
-              className="hidden dark:block object-contain"
+              width={96}
+              height={20}
+              className="hidden dark:block object-contain mb-1"
               priority
             />
             <Image
               src="/logo-light.svg"
               alt="iMadeFire"
-              width={120}
-              height={24}
-              className="block dark:hidden object-contain"
+              width={96}
+              height={20}
+              className="block dark:hidden object-contain mb-1"
               priority
             />
+            {/* App + interface name */}
+            <div className="leading-none">
+              <span className="text-sm font-bold tracking-tight">Job Seeker</span>
+              <span className="text-xs text-muted-foreground ml-1.5">Command Center</span>
+            </div>
           </div>
         ) : (
-          <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
-            <span className="text-blue-400 font-bold text-xs">iF</span>
-          </div>
+          <Image
+            src="/icon-fire.svg"
+            alt="Job Seeker"
+            width={28}
+            height={28}
+            className="object-contain"
+            priority
+          />
         )}
       </div>
 
@@ -95,12 +106,12 @@ export function Sidebar({ wsConnected = true }: { wsConnected?: boolean }) {
                 'transition-all duration-150',
                 collapsed && 'justify-center px-2',
                 active
-                  ? 'bg-background/80 shadow-sm text-blue-400 dark:text-blue-400'
+                  ? 'bg-background/80 shadow-sm text-blue-600 dark:text-blue-400'
                   : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50',
               )}
               title={collapsed ? label : undefined}
             >
-              <Icon size={16} className={active ? 'text-blue-400' : ''} />
+              <Icon size={16} className={active ? 'text-blue-600 dark:text-blue-400' : ''} />
               {!collapsed && <span>{label}</span>}
             </Link>
           )
@@ -115,11 +126,11 @@ export function Sidebar({ wsConnected = true }: { wsConnected?: boolean }) {
           collapsed && 'justify-center px-2',
         )}>
           {wsConnected
-            ? <Wifi size={14} className="text-green-400 shrink-0" />
-            : <WifiOff size={14} className="text-red-400 shrink-0" />
+            ? <Wifi size={14} className="text-green-600 dark:text-green-400 shrink-0" />
+            : <WifiOff size={14} className="text-red-600 dark:text-red-400 shrink-0" />
           }
           {!collapsed && (
-            <span className={cn('text-xs', wsConnected ? 'text-green-400' : 'text-red-400')}>
+            <span className={cn('text-xs', wsConnected ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
               {wsConnected ? 'Live' : 'Offline'}
             </span>
           )}

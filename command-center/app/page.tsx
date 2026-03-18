@@ -217,7 +217,7 @@ export default function Dashboard() {
                 autoFocus
               />
               {submitResult && (
-                <div className={`flex items-center gap-2 text-xs ${submitResult.ok ? 'text-green-400' : 'text-red-400'}`}>
+                <div className={`flex items-center gap-2 text-xs ${submitResult.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                   {submitResult.ok ? <CheckCircle size={12} /> : <AlertCircle size={12} />}
                   {submitResult.msg}
                 </div>

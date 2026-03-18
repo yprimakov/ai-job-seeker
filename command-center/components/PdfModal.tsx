@@ -16,18 +16,19 @@ export function PdfModal({ url, onClose }: PdfModalProps) {
   const zoomOut = () => setZoom(z => Math.max(50,  z - 25))
 
   // The #zoom= fragment is supported by Chrome/Edge's built-in PDF viewer
-  const iframeSrc = `${url}#toolbar=1&navpanes=1&zoom=${zoom}`
+  const iframeSrc = `${url}#toolbar=1&navpanes=0&zoom=${zoom}`
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm"
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
-        className="relative flex flex-col w-full max-w-4xl mx-4"
+        className="relative flex flex-col"
         style={{
-          height: '90vh',
-          background: 'rgba(2,6,23,0.97)',
+          position: 'absolute',
+          inset: '12px',
+          background: 'rgba(2,6,23,0.98)',
           border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: 16,
           overflow: 'hidden',

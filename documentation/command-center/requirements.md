@@ -107,9 +107,9 @@ via class swaps. Values from `theme_architecture.jsonc`:
 
 | Orb | Size | Position | Light gradient | Dark gradient | Blur | Opacity |
 |-----|------|----------|---------------|---------------|------|---------|
-| 1 | 600×600px | top: -200px, left: -200px | blue-300 → sky-200 | purple-500 → slate-950 | 80px | 0.4 |
-| 2 | 500×500px | bottom: -100px, right: -100px | orange-200 → yellow-300 | amber-500 → amber-600 | 60px | 0.3 |
-| 3 | 400×400px | center (50%, 40%) | purple-300 → blue-300 | violet-700 → indigo-500 | 70px | 0.25 |
+| 1 | 600x600px | top: -200px, left: -200px | blue-300 → sky-200 | purple-500 → slate-950 | 80px | 0.4 |
+| 2 | 500x500px | bottom: -100px, right: -100px | orange-200 → yellow-300 | amber-500 → amber-600 | 60px | 0.3 |
+| 3 | 400x400px | center (50%, 40%) | purple-300 → blue-300 | violet-700 → indigo-500 | 70px | 0.25 |
 
 A subtle grid texture overlays the orbs:
 `repeating-linear-gradient` 96px grid, `rgba(0,0,0,0.03)` lines.
@@ -126,7 +126,7 @@ from the live portfolio.
 **Outer wrapper** (`SpotlightCard` outer div):
 ```
 border-radius:    1.5rem  (rounded-3xl)
-padding:          1px     ← hairline gap; glow bleeds through as rim light
+padding:          1px     <- hairline gap; glow bleeds through as rim light
 backdrop-filter:  blur(12px)
 background (light): rgba(241, 245, 249, 0.4)   /* slate-100 @ 40% */
 background (dark):  rgba(15, 23, 42, 0.4)       /* slate-900 @ 40% */
@@ -146,8 +146,9 @@ inset highlight:    inset 0px 1px 0px rgba(255,255,255,0.1)
 **Hover state:** `transform: scale(1.02)` with `transition: 200ms ease-in-out`
 
 **Animated border** (fades in on hover):
-- Thin absolutely-positioned divs on all four edges, `opacity-0 → opacity-1 (300ms)`
-- Gradient: `linear-gradient(to right, transparent, #60a5fa, #3b82f6, #2563eb, transparent)`
+- CSS `::before` pseudo-element with mask-composite gradient on wrapper
+- Gradient: `linear-gradient(135deg, transparent 15%, rgba(96,165,250,0.9) 45%, rgba(59,130,246,1) 55%, transparent 85%)`
+- Uses `-webkit-mask-composite: xor` to clip to border-radius without overflow:hidden
 
 The `SpotlightCard` component lives in `components/SpotlightCard.tsx`. All
 dashboard cards, table panels, stat widgets, and form modals use it.
@@ -156,22 +157,21 @@ dashboard cards, table panels, stat widgets, and form modals use it.
 
 ### Spotlight Mouse-Follow Glow Effect
 
-Every `SpotlightCard` tracks the cursor and casts a soft diffused glow. Full
-implementation spec in `brand/design_guide/SPOTLIGHT_EFFECT.md`.
+Every `SpotlightCard` tracks the cursor and casts a soft diffused glow.
 
 **Key numbers:**
 
 | Property | Value |
 |----------|-------|
-| `::before` (white orb) | 320×320px, `blur(100px)`, `rgba(248,250,252,1)`, 20% opacity |
-| `::after` (violet orb) | 384×384px, `blur(100px)`, `rgb(139,92,246)` dark / `rgb(237,233,254)` light |
-| `::after` hover opacity | 10% dark / 20% light |
-| Opacity transition | 500ms |
+| `::before` (white orb) | 400x400px, `blur(60px)`, `rgba(255,255,255,0.18)`, 0→1 on hover |
+| `::after` (violet orb) | 480x480px, `blur(80px)`, `rgba(99,102,241,0.12)` dark / `rgba(139,92,246,0.08)` light |
+| Opacity transition | 600ms |
 | Mouse update throttle | `requestAnimationFrame`-gated flag |
-| Outer wrapper padding | 1px — glow bleeds through as rim light |
+| Both orbs start | `opacity: 0` — shown only on hover to prevent corner artifacts |
 
-**Component:** `components/SpotlightCard.tsx` exposes `<Spotlight>` +
-`<SpotlightCard>`. A global `useMousePosition` hook feeds cursor coordinates.
+**Component:** `components/SpotlightCard.tsx`. RAF-throttled `mousemove` listener
+sets `--mouse-x`/`--mouse-y` CSS custom properties per card. `overflow: hidden`
+clips orbs to card bounds.
 
 ---
 
@@ -179,15 +179,15 @@ implementation spec in `brand/design_guide/SPOTLIGHT_EFFECT.md`.
 
 Application statuses map to gradient pills using the brand badge palette:
 
-| Status | Gradient | Palette key |
-|--------|----------|-------------|
-| Applied | blue-500 → cyan-500 | coolTech |
-| Phone Screen | sky-400 → indigo-600 | skyIndigo |
-| Interview | purple-500 → pink-500 | creative |
-| Assessment | orange-400 → yellow-400 | warm |
-| Offer | green-500 → teal-600 | greenTeal |
-| Rejected | red-500 (solid) | destructive |
-| Ghosted | slate-500 (muted, 60% opacity) | — |
+| Status | Gradient | CSS class |
+|--------|----------|-----------|
+| Applied | blue-500 → cyan-500 | `.badge-applied` |
+| Phone Screen | sky-400 → indigo-600 | `.badge-phone-screen` |
+| Interview | purple-500 → pink-500 | `.badge-interview` |
+| Assessment | orange-400 → yellow-400 | `.badge-assessment` |
+| Offer | green-500 → teal-600 | `.badge-offer` |
+| Rejected | red-500 (solid) | `.badge-rejected` |
+| Ghosted | slate-500 (muted, 60% opacity) | `.badge-ghosted` |
 
 ---
 
@@ -206,21 +206,22 @@ Application statuses map to gradient pills using the brand badge palette:
 - Single password stored in `.env` as `COMMAND_CENTER_PASSWORD`
 - Next.js middleware intercepts all routes; prompts for password on first visit
 - Session stored in a signed HTTP-only cookie (24-hour TTL)
+- SHA-256 token computed via WebCrypto API (`crypto.subtle.digest`) for Edge Runtime compatibility
 - No user accounts, no registration flow
 
 ---
 
 ## 2. Real-Time Updates
 
-- A WebSocket server runs alongside the Next.js dev server
+- A WebSocket server runs alongside the Next.js dev server (via `server.js`)
 - A file watcher (`chokidar`) monitors:
   - `jobs/application_tracker.csv`
   - `jobs/application_qa.csv`
   - `jobs/linkedin_results.md`
   - `applications/` directory (new folders)
-  - `.env` (settings changes)
 - On any file change, the server broadcasts a typed event to all connected clients
 - Client receives the event and re-fetches only the affected data (no full page reload)
+- Custom server (`server.js`) integrates Next.js handler + WebSocket upgrade on `/ws`
 
 ---
 
@@ -262,14 +263,7 @@ Application statuses map to gradient pills using the brand badge palette:
 - Sortable by any column
 - Filterable by: Status, Work Mode, Easy Apply, Has Response, Follow-up Due
 - Search bar (fuzzy match on Company + Title)
-- Color-coded status badges:
-  - Applied: gray
-  - Phone Screen: blue
-  - Interview: purple
-  - Assessment: orange
-  - Offer: green
-  - Rejected: red
-  - Ghosted: dim
+- Color-coded status badges
 
 ### Row actions (inline or via detail page)
 - Update status (dropdown, saves immediately via API route)
@@ -291,6 +285,7 @@ Application statuses map to gradient pills using the brand badge palette:
 - Full row data displayed as a form (editable fields: status, notes, salary, work mode)
 - Save button writes back to CSV via API route
 - File panel: resume.md preview, cover_letter_full.md preview, analysis.json viewer
+- PDF thumbnail (small clickable iframe preview) with full-screen modal on click
 - Pipeline action buttons:
   - "Re-tailor resume" (runs `tailor_resume.py`)
   - "Generate cover letter" (runs `cover_letter.py`)
@@ -322,17 +317,17 @@ Application statuses map to gradient pills using the brand badge palette:
 - Displays `jobs/linkedin_results.md` parsed as a table
 - Columns: Score | Title | Company | Location | Salary | Easy Apply | URL | Actions
 - Actions per row: "Add to queue", "Open URL", "Dismiss"
-- "Find new jobs" button at top — triggers `linkedin_scraper.py` with configurable
-  query + filters (remote, easy apply, date range)
+- "Find new jobs" button at top — triggers `linkedin_scraper.py` in an external terminal
 - Shows last-scraped timestamp
+- WebSocket broadcasts `results_updated` when `linkedin_results.md` changes
 
 ---
 
 ## 8. Q&A Knowledge Base (`/qa`)
 
 - Table: Question ID | Question | Context | Answer | Date Answered
-- Unanswered questions highlighted at top
-- Inline answer editor (click to expand, type answer, save — runs `tracker.py answer`)
+- Unanswered questions highlighted at top with badge
+- Inline answer editor (click to expand, type answer, save — calls PATCH /api/qa/[id])
 - Add new question button (modal form)
 - Search / filter by keyword
 - Bulk export to CSV
@@ -346,13 +341,13 @@ All charts use real data from `application_tracker.csv`.
 | Chart | Type | Description |
 |-------|------|-------------|
 | Applications over time | Line | Daily/weekly application count |
-| Pipeline funnel | Funnel | Count at each status stage |
+| Pipeline funnel | Bar | Count at each status stage |
 | Response rate by work mode | Bar | Remote vs Hybrid vs On-site |
-| Response rate by ATS | Bar | Greenhouse vs Lever vs LinkedIn EA vs Other |
-| Response rate by salary range | Bar | Bucketed ($0-150k, $150-200k, $200k+) |
-| Match score vs response rate | Scatter | Per-application dot plot |
-| Days to response | Histogram | Distribution of response lag |
-| Easy Apply vs Direct | Donut | Response rate comparison |
+| Response rate by Easy Apply | Bar | EA vs Direct comparison |
+| Response type breakdown | Pie | Phone Screen / Interview / Rejected / etc. |
+| Days to response | Bar | Distribution of response lag |
+| Match score vs response | Scatter | Per-application dot plot |
+| Applications by salary range | Bar | Bucketed salary distribution |
 
 Summary stats panel above charts:
 - Best-performing salary range
@@ -398,7 +393,9 @@ Summary stats panel above charts:
 | POST | `/api/applications/[id]/response` | Log a response |
 | POST | `/api/jobs/queue` | Add URL to processing queue |
 | GET | `/api/jobs/queue` | Get queue status |
-| POST | `/api/jobs/scrape` | Trigger LinkedIn scraper |
+| DELETE | `/api/jobs/queue/[id]` | Remove queue item |
+| GET | `/api/jobs/results` | Parse linkedin_results.md |
+| POST | `/api/pipeline/scrape` | Launch LinkedIn scraper in external terminal |
 | GET | `/api/qa` | Read all Q&A rows |
 | POST | `/api/qa` | Add a new question |
 | PATCH | `/api/qa/[id]` | Save an answer |
@@ -408,12 +405,11 @@ Summary stats panel above charts:
 | POST | `/api/pipeline/tailor` | Run tailor_resume.py |
 | POST | `/api/pipeline/cover-letter` | Run cover_letter.py |
 | POST | `/api/pipeline/followup` | Run followup.py |
-| GET | `/api/health` | Dependency check (Gmail, API key, Chrome) |
+| GET | `/api/file` | Serve application files (PDF, MD, JSON) — path-restricted |
+| POST | `/api/tunnel` | Launch here.now tunnel |
 | GET | `/ws` | WebSocket upgrade endpoint |
 
 All mutating routes validate the session cookie before executing.
-Pipeline routes spawn child processes and stream stdout back to the client via
-the WebSocket connection.
 
 ---
 
@@ -423,7 +419,9 @@ the WebSocket connection.
 command-center/
 ├── app/
 │   ├── layout.tsx
+│   ├── globals.css
 │   ├── page.tsx                  # Dashboard
+│   ├── login/page.tsx            # Auth
 │   ├── applications/
 │   │   ├── page.tsx              # Tracker table
 │   │   └── [id]/page.tsx         # Detail view
@@ -431,23 +429,24 @@ command-center/
 │   ├── qa/page.tsx               # Q&A knowledge base
 │   ├── analytics/page.tsx        # Charts
 │   └── settings/page.tsx         # Profile + config
-├── api/                          # Next.js API routes (see section 11)
+│   └── api/                      # Next.js API routes (see section 11)
 ├── components/
-│   ├── ApplicationTable.tsx
-│   ├── PipelineFunnel.tsx
-│   ├── JobQueue.tsx
-│   ├── QATable.tsx
-│   ├── AnalyticsCharts.tsx
-│   ├── StatusBadge.tsx
-│   └── SettingsForm.tsx
+│   ├── AmbientBackground.tsx     # 3 animated orbs + grid overlay
+│   ├── SpotlightCard.tsx         # Glassmorphic card + spotlight glow
+│   ├── Sidebar.tsx               # Left nav with logo
+│   ├── StatusBadge.tsx           # Gradient status pills
+│   ├── MetricCard.tsx            # Stat widget
+│   ├── PdfModal.tsx              # Native iframe PDF viewer
+│   └── ThemeToggle.tsx           # Light/dark/system toggle
 ├── lib/
 │   ├── csv.ts                    # Read/write tracker + QA CSVs
-│   ├── pipeline.ts               # Spawn pipeline scripts as child processes
-│   ├── websocket.ts              # WS server + chokidar file watcher
-│   ├── auth.ts                   # Cookie-based session validation
-│   └── env.ts                    # dotenv read/write helpers
-├── middleware.ts                 # Auth middleware (all routes)
-├── .env.local                    # COMMAND_CENTER_PASSWORD + port
+│   ├── ws-client.tsx             # WebSocket context + useWS hook
+│   └── utils.ts                  # cn() and helpers
+├── server.js                     # Custom Node.js server (Next.js + WS + chokidar)
+├── middleware.ts                  # Auth middleware (Edge Runtime, WebCrypto)
+├── next.config.mjs
+├── tailwind.config.ts
+├── tsconfig.json
 └── package.json
 ```
 

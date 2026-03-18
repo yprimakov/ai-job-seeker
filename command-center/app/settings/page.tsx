@@ -33,12 +33,12 @@ function IntegrationStatus({ label, ok, link }: { label: string; ok: boolean; li
         <span className="text-sm">{label}</span>
       </div>
       <div className="flex items-center gap-2">
-        <span className={`text-xs ${ok ? 'text-green-400' : 'text-red-400'}`}>
+        <span className={`text-xs ${ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
           {ok ? 'Connected' : 'Not configured'}
         </span>
         {link && !ok && (
           <a href={link} target="_blank" rel="noopener noreferrer"
-            className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
+            className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 flex items-center gap-1">
             Setup <ExternalLink size={10} />
           </a>
         )}
@@ -205,12 +205,12 @@ export default function SettingsPage() {
           </button>
           {tunnelUrl && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-green-400/10 border border-green-400/20">
-              <CheckCircle size={13} className="text-green-400 shrink-0" />
+              <CheckCircle size={13} className="text-green-600 dark:text-green-400 shrink-0" />
               <a href={tunnelUrl} target="_blank" rel="noopener noreferrer"
-                className="text-sm text-green-400 hover:text-green-300 font-mono truncate">
+                className="text-sm text-green-600 dark:text-green-400 hover:text-green-500 dark:hover:text-green-300 font-mono truncate">
                 {tunnelUrl}
               </a>
-              <ExternalLink size={11} className="text-green-400 shrink-0" />
+              <ExternalLink size={11} className="text-green-600 dark:text-green-400 shrink-0" />
             </div>
           )}
         </div>

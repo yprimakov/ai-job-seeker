@@ -184,14 +184,14 @@ job-seeker/
 │   │   └── auto_log.py         # Confirmation detection + auto-log
 │   ├── resume_base.example.md  # Resume template (copy to resume_base.md)
 │   ├── resume_base.md          # YOUR resume (gitignored)
-│   ├── PIPELINE_IMPROVEMENTS.md # Feature backlog and status
 │   └── requirements.txt
 ├── applications/               # Per-job output folders (gitignored)
 ├── jobs/                       # Tracker CSVs + Q&A knowledge base (gitignored)
 ├── resume/                     # Your original resume files (gitignored)
+├── command-center/             # Next.js web UI (see documentation/command-center/)
+├── documentation/              # Project documentation
 ├── .env                        # API key + candidate profile (gitignored)
 ├── .env.example                # Template — copy to .env and fill in
-├── RELEASE_NOTES.md            # Changelog
 └── CLAUDE.md                   # Instructions for AI assistants
 ```
 

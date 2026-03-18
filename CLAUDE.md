@@ -45,19 +45,29 @@ C:\.Projects\job-seeker\
 │   ├── tracker.py                   ← application tracker + Q&A knowledge base
 │   ├── resume_base.md               ← base resume in Markdown (source of truth)
 │   └── requirements.txt             ← anthropic, python-docx, python-dotenv
+├── command-center\                  ← Next.js web UI (localhost:3000)
 ├── jobs\
 │   ├── linkedin_results.md          ← LinkedIn search results with fit scores
 │   ├── application_tracker.csv      ← one row per application
 │   └── application_qa.csv           ← questions encountered + answers (memory)
-└── applications\
-    └── YYYYMMDD_Company_JobTitle\   ← one folder per job
-        ├── job_description.txt      ← raw JD
-        ├── posting.md               ← metadata (salary, URL, match score, status)
-        ├── resume.md                ← tailored resume (markdown)
-        ├── resume.html              ← styled HTML version
-        ├── resume.pdf               ← print-ready PDF
-        ├── cover_letter.md          ← cover letter snippet
-        └── analysis.json            ← full JD analysis + ATS keywords
+├── applications\
+│   └── YYYYMMDD_Company_JobTitle\   ← one folder per job
+│       ├── job_description.txt      ← raw JD
+│       ├── posting.md               ← metadata (salary, URL, match score, status)
+│       ├── resume.md                ← tailored resume (markdown)
+│       ├── resume.html              ← styled HTML version
+│       ├── resume.pdf               ← print-ready PDF
+│       ├── cover_letter.md          ← cover letter snippet
+│       └── analysis.json            ← full JD analysis + ATS keywords
+└── documentation\                   ← project documentation
+    ├── project\
+    │   ├── README.md                ← project overview and quick start
+    │   └── release-notes.md         ← changelog
+    ├── command-center\
+    │   ├── requirements.md          ← full UI spec and design system
+    │   └── improvements.md          ← completed fixes + pending backlog
+    └── pipeline\
+        └── improvements.md          ← pipeline feature backlog
 ```
 
 ---
@@ -181,7 +191,7 @@ Full details in `jobs/linkedin_results.md`.
 
 ---
 
-## Current Status (as of 2026-03-15)
+## Current Status (as of 2026-03-17)
 
 - [x] Resume reviewed and base markdown created
 - [x] Tailoring pipeline built (`tailor_resume.py`)
@@ -189,9 +199,12 @@ Full details in `jobs/linkedin_results.md`.
 - [x] Google Drive folder structure created
 - [x] here.now installed and authenticated
 - [x] Resume formatting rules defined and enforced in prompt
+- [x] Command Center web UI built and running (`command-center/`, localhost:3000)
 - [ ] First tailored resume generated (next step: People In AI)
 - [ ] First application submitted
 - [ ] LinkedIn search expanded to additional role titles
+
+See `documentation/command-center/improvements.md` for the full Command Center backlog.
 
 ---
 

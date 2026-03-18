@@ -110,7 +110,7 @@
 - Zapier MCP Gmail integration verified working end-to-end with test send/receive
 
 ### Planning
-- **New: `pipeline/PIPELINE_IMPROVEMENTS.md`** — Backlog of 12 planned pipeline enhancements across 3 priority tiers (P1 Speed, P2 Quality, P3 Strategic). See that file for details.
+- **New: `documentation/pipeline/improvements.md`** — Backlog of 12 planned pipeline enhancements across 3 priority tiers (P1 Speed, P2 Quality, P3 Strategic).
 
 ---
 
@@ -149,5 +149,5 @@
   - Contact bar uses `&nbsp;·&nbsp;` separator
 
 ### First Applications Submitted
-- 14 LinkedIn Easy Apply applications (March 15–16)
-- 2 Greenhouse applications to Anthropic (Solutions Architect and Forward Deployed Engineer, March 16–17)
+- 14 LinkedIn Easy Apply applications (March 15-16)
+- 2 Greenhouse applications to Anthropic (Solutions Architect and Forward Deployed Engineer, March 16-17)

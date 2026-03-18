@@ -59,7 +59,7 @@ function LoginForm() {
                   autoFocus
                 />
               </div>
-              {error && <p className="text-xs text-red-400 text-center">{error}</p>}
+              {error && <p className="text-xs text-red-600 dark:text-red-400 text-center">{error}</p>}
               <button
                 type="submit"
                 disabled={loading || !password}

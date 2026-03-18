@@ -41,12 +41,18 @@ app.prepare().then(() => {
   // WebSocket server attached to the same HTTP server
   const wss = new WebSocketServer({ noServer: true })
 
+  // Next.js upgrade handler (HMR in dev mode)
+  const nextUpgrade = app.getUpgradeHandler ? app.getUpgradeHandler() : null
+
   server.on('upgrade', (req, socket, head) => {
     const { pathname } = parse(req.url)
     if (pathname === '/ws') {
       wss.handleUpgrade(req, socket, head, ws => {
         wss.emit('connection', ws, req)
       })
+    } else if (nextUpgrade) {
+      // Forward HMR and other Next.js websocket connections
+      nextUpgrade(req, socket, head)
     } else {
       socket.destroy()
     }

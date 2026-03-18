@@ -54,7 +54,7 @@ function StatChip({ label, value, icon: Icon, accent }: {
 }) {
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-secondary/40 border border-border/40">
-      <div className={`p-2 rounded-lg ${accent ? 'bg-blue-500/20 text-blue-400' : 'bg-secondary text-muted-foreground'}`}>
+      <div className={`p-2 rounded-lg ${accent ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400' : 'bg-secondary text-muted-foreground'}`}>
         <Icon size={14} />
       </div>
       <div>

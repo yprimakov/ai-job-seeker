@@ -38,8 +38,8 @@ function QARowItem({ row, onSave }: { row: QARow; onSave: () => void }) {
       >
         <div className="shrink-0 mt-0.5">
           {unanswered
-            ? <AlertCircle size={14} className="text-orange-400" />
-            : <CheckCircle size={14} className="text-green-400" />}
+            ? <AlertCircle size={14} className="text-orange-600 dark:text-orange-400" />
+            : <CheckCircle size={14} className="text-green-600 dark:text-green-400" />}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium leading-snug">{row.Question}</p>
@@ -126,7 +126,7 @@ export default function QAPage() {
       {/* Unanswered */}
       {unanswered.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-xs font-semibold text-orange-400 uppercase tracking-wider flex items-center gap-2">
+          <h2 className="text-xs font-semibold text-orange-600 dark:text-orange-400 uppercase tracking-wider flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse inline-block" />
             Needs Your Answer ({unanswered.length})
           </h2>
