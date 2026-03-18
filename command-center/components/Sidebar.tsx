@@ -1,12 +1,11 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Briefcase, Zap, HelpCircle,
-  BarChart3, Settings, ChevronLeft, ChevronRight, Wifi, WifiOff,
+  BarChart3, Settings, ChevronLeft, ChevronRight, Wifi, WifiOff, BookOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from './ThemeToggle'
@@ -17,11 +16,18 @@ const NAV = [
   { href: '/jobs', label: 'Job Queue', icon: Zap },
   { href: '/qa', label: 'Q&A Base', icon: HelpCircle },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/documentation', label: 'Documentation', icon: BookOpen },
 ]
 
-export function Sidebar({ wsConnected = true }: { wsConnected?: boolean }) {
-  const [collapsed, setCollapsed] = useState(false)
+export function Sidebar({
+  wsConnected = true,
+  collapsed,
+  onCollapse,
+}: {
+  wsConnected?: boolean
+  collapsed: boolean
+  onCollapse: (v: boolean) => void
+}) {
   const pathname = usePathname()
 
   return (
@@ -65,20 +71,22 @@ export function Sidebar({ wsConnected = true }: { wsConnected?: boolean }) {
             </div>
           </div>
         ) : (
-          <Image
-            src="/icon-fire.svg"
-            alt="Job Seeker"
-            width={28}
-            height={28}
-            className="object-contain"
-            priority
-          />
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500/20 to-red-500/10 border border-orange-500/20 flex items-center justify-center">
+            <Image
+              src="/icon-fire.svg"
+              alt="Job Seeker"
+              width={18}
+              height={18}
+              className="object-contain"
+              priority
+            />
+          </div>
         )}
       </div>
 
       {/* Collapse toggle */}
       <button
-        onClick={() => setCollapsed(c => !c)}
+        onClick={() => onCollapse(!collapsed)}
         className={cn(
           'absolute top-14 -right-3 w-6 h-6 rounded-full border border-border/60',
           'bg-background flex items-center justify-center',
@@ -120,6 +128,28 @@ export function Sidebar({ wsConnected = true }: { wsConnected?: boolean }) {
 
       {/* Bottom controls */}
       <div className="border-t border-border/40 p-2 space-y-1 shrink-0">
+        {/* Settings link */}
+        {(() => {
+          const active = pathname.startsWith('/settings')
+          return (
+            <Link
+              href="/settings"
+              className={cn(
+                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium',
+                'transition-all duration-150',
+                collapsed && 'justify-center px-2',
+                active
+                  ? 'bg-background/80 shadow-sm text-blue-600 dark:text-blue-400'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50',
+              )}
+              title={collapsed ? 'Settings' : undefined}
+            >
+              <Settings size={16} className={active ? 'text-blue-600 dark:text-blue-400' : ''} />
+              {!collapsed && <span>Settings</span>}
+            </Link>
+          )
+        })()}
+
         {/* WS status */}
         <div className={cn(
           'flex items-center gap-2 px-3 py-1.5 rounded-lg',

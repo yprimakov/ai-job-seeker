@@ -10,6 +10,7 @@ const ROOT = path.resolve(process.cwd(), '..')
 const ALLOWED_ROOTS = [
   path.resolve(ROOT, 'applications'),
   path.resolve(ROOT, 'resume'),
+  path.resolve(ROOT, 'pipeline'),
 ]
 
 export async function GET(req: NextRequest) {

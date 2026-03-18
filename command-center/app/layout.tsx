@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { AmbientBackground } from '@/components/AmbientBackground'
-import { Sidebar } from '@/components/Sidebar'
+import { AppShell } from '@/components/AppShell'
 import { WSProvider } from '@/lib/ws-client'
 
 export const metadata: Metadata = {
@@ -44,15 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AmbientBackground />
 
         <WSProvider>
-          <div className="relative z-10 flex min-h-screen">
-            <Sidebar />
-            {/* Main content offset by sidebar width */}
-            <main className="flex-1 ml-60 min-h-screen transition-all duration-300">
-              <div className="max-w-7xl mx-auto px-6 py-8">
-                {children}
-              </div>
-            </main>
-          </div>
+          <AppShell>{children}</AppShell>
         </WSProvider>
       </body>
     </html>

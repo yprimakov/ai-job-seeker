@@ -5,18 +5,28 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+function parseLocalDate(dateStr: string): Date | null {
+  const m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (m) return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]))
+  const d = new Date(dateStr)
+  return isNaN(d.getTime()) ? null : d
+}
+
 export function formatDate(dateStr: string): string {
   if (!dateStr) return ''
   try {
-    // Parse YYYY-MM-DD as local time to avoid UTC midnight -> previous day shift
-    const m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/)
-    if (m) {
-      const d = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]))
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    }
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short', day: 'numeric', year: 'numeric',
-    })
+    const d = parseLocalDate(dateStr)
+    if (!d) return dateStr
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  } catch { return dateStr }
+}
+
+export function formatShortDate(dateStr: string): string {
+  if (!dateStr) return ''
+  try {
+    const d = parseLocalDate(dateStr)
+    if (!d) return dateStr
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   } catch { return dateStr }
 }
 
@@ -48,6 +58,11 @@ export interface TrackerRow {
   'Date Response Received': string
   'Response Type': string
   _id?: number
+  // Enriched server-side (not stored in CSV)
+  _slug?: string                // application folder name — stable URL identifier
+  match_score?: number
+  ats_coverage_before?: number  // keywords found in base resume
+  ats_coverage_after?: number   // keywords found in tailored resume
 }
 
 export interface QARow {
