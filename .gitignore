@@ -10,7 +10,7 @@ pipeline/resume_base.md
 /output/
 
 # Job search data (tracker, Q&A knowledge base, search results)
-jobs/
+/jobs/
 
 # Tool credentials and local config
 .herenow/
