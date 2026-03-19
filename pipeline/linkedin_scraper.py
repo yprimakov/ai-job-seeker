@@ -23,7 +23,9 @@ Env vars required:
 from __future__ import annotations
 
 import argparse
+import csv
 import json
+import re
 import sys
 import time
 from datetime import datetime
@@ -161,6 +163,22 @@ SCRAPE_JOBS_JS: str = """
                 if (m) jobId = m[1];
             }
 
+            // Posted date — prefer datetime attribute for precision
+            var posted = '';
+            var timeEl = card.querySelector('time[datetime]');
+            if (timeEl) {
+                // Use human-readable text if available, else the datetime attr
+                posted = timeEl.innerText.trim() || timeEl.getAttribute('datetime') || '';
+            }
+            if (!posted) {
+                posted = getText(card, [
+                    '.job-card-container__listed-status',
+                    '.job-search-card__listdate',
+                    'span[class*="listed-time"]',
+                    'span[class*="time-badge"]'
+                ]);
+            }
+
             // Only keep cards where we got at minimum a title
             if (title) {
                 jobs.push({
@@ -169,6 +187,7 @@ SCRAPE_JOBS_JS: str = """
                     location: location,
                     salary: salary,
                     easyApply: easyApply,
+                    posted: posted,
                     url: url || window.location.href,
                     jobId: jobId
                 });
@@ -440,9 +459,9 @@ def save_results(
         by_score.setdefault(s, []).append(job)
 
     table_header = (
-        "| Job Title | Company | Location | Salary | Easy Apply | Score | Fit Reason | URL |"
+        "| Job Title | Company | Location | Salary | Easy Apply | Score | Posted | Fit Reason | URL |"
     )
-    table_sep = "|-----------|---------|----------|--------|------------|-------|------------|-----|"
+    table_sep = "|-----------|---------|----------|--------|------------|-------|--------|------------|-----|"
 
     for score in sorted(by_score.keys(), reverse=True):
         group = by_score[score]
@@ -460,12 +479,13 @@ def save_results(
             salary = _md_cell(job.get("salary", ""))
             easy = "Yes" if job.get("easyApply") else "No"
             score_val = str(job.get("score", ""))
+            posted = _md_cell(job.get("posted", ""))
             fit_reason = _md_cell(job.get("fit_reason", ""))
             url = job.get("url", "")
             url_cell = f"[Link]({url})" if url else ""
 
             lines.append(
-                f"| {title} | {company} | {location} | {salary} | {easy} | {score_val} | {fit_reason} | {url_cell} |"
+                f"| {title} | {company} | {location} | {salary} | {easy} | {score_val} | {posted} | {fit_reason} | {url_cell} |"
             )
 
         lines.append("")
@@ -617,6 +637,34 @@ def _cli_main() -> None:
 
     if not all_jobs:
         print("No jobs scraped. Check your search terms or LinkedIn session.")
+        sys.exit(0)
+
+    # Filter out jobs already in the application tracker
+    tracker_path = Path(__file__).parent.parent / "jobs" / "application_tracker.csv"
+    applied_job_ids: set[str] = set()
+    if tracker_path.exists():
+        with open(tracker_path, encoding="utf-8", newline="") as f:
+            for row in csv.DictReader(f):
+                url = row.get("LinkedIn URL", "").strip()
+                m = re.search(r"/jobs/view/(\d+)", url)
+                if m:
+                    applied_job_ids.add(m.group(1))
+
+    if applied_job_ids:
+        before = len(all_jobs)
+        all_jobs = [
+            j for j in all_jobs
+            if not (
+                (m := re.search(r"/jobs/view/(\d+)", j.get("url", "")))
+                and m.group(1) in applied_job_ids
+            )
+        ]
+        filtered_count = before - len(all_jobs)
+        if filtered_count:
+            print(f"\nFiltered out {filtered_count} job(s) already in your application tracker.")
+
+    if not all_jobs:
+        print("No new jobs found (all results already applied to).")
         sys.exit(0)
 
     print(f"\nScoring {len(all_jobs)} jobs with Claude Haiku...")

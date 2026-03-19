@@ -32,6 +32,7 @@ type LinkedInJob = {
   easyApply?: boolean
   url: string
   score?: number
+  posted?: string
   fit_reason?: string
 }
 
@@ -582,6 +583,7 @@ export default function JobsPage() {
                       <th>Location</th>
                       <th>Salary</th>
                       <th title="Easy Apply via LinkedIn">EA</th>
+                      <th>Posted</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -611,6 +613,9 @@ export default function JobsPage() {
                           {job.easyApply
                             ? <span className="text-xs text-blue-600 dark:text-blue-400">EA</span>
                             : <span className="text-xs text-muted-foreground">-</span>}
+                        </td>
+                        <td className="text-xs text-muted-foreground whitespace-nowrap">
+                          {job.posted || '-'}
                         </td>
                         <td onClick={e => e.stopPropagation()}>
                           {job.url && (

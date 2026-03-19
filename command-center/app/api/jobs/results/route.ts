@@ -15,6 +15,7 @@ function parseLinkedInMd(md: string): {
     easyApply?: boolean
     url: string
     score?: number
+    posted?: string
     fit_reason?: string
   }>
   query?: string
@@ -53,29 +54,31 @@ function parseLinkedInMd(md: string): {
       continue
     }
 
-    // Parse data row
-    const cells = line.split('|').map(c => c.trim()).filter(Boolean)
+    // Parse data row — slice(1,-1) preserves empty cells (salary may be blank)
+    // filter(Boolean) would shift column indices and corrupt score parsing
+    const cells = line.split('|').map(c => c.trim()).slice(1, -1)
     if (cells.length < 3) continue
 
     // Detect column positions from header
     const headers = headerLine.split('|').map(c => c.trim().toLowerCase()).filter(Boolean)
     const get = (name: string) => {
       const idx = headers.findIndex(h => h.includes(name))
-      return idx >= 0 ? cells[idx] : ''
+      return idx >= 0 ? (cells[idx] ?? '') : ''
     }
 
-    // Try score | company | title | location | salary | ea | url pattern
     const scoreStr = get('score')
-    const company = get('company') || cells[1] || ''
-    const title = get('title') || cells[2] || ''
-    const location = get('location') || cells[3] || ''
-    const salary = get('salary') || cells[4] || ''
-    const eaStr = (get('ea') || get('easy') || cells[5] || '').toLowerCase()
-    const url = get('url') || cells[cells.length - 1] || ''
+    const company = get('company')
+    const title = get('title') || get('job')
+    const location = get('location')
+    const salary = get('salary')
+    const eaStr = (get('easy') || get('ea')).toLowerCase()
+    const posted = get('posted')
+    const fitReason = get('fit')
+    const url = get('url')
 
     if (!company && !title) continue
 
-    const scoreNum = (scoreStr != null && scoreStr !== '') ? parseInt(scoreStr, 10) : NaN
+    const scoreNum = (scoreStr !== '') ? parseInt(scoreStr, 10) : NaN
     const score = isNaN(scoreNum) ? undefined : scoreNum
 
     jobs.push({
@@ -83,9 +86,11 @@ function parseLinkedInMd(md: string): {
       company: company.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'),
       location,
       salary: salary || undefined,
-      easyApply: eaStr.includes('yes') || eaStr.includes('ea') || eaStr === 'true',
+      easyApply: eaStr.includes('yes') || eaStr === 'true',
       url: url.match(/https?:\/\/[^\s)]+/)?.[0] ?? url,
-      score: isNaN(score as number) ? undefined : score,
+      score: isNaN(scoreNum) ? undefined : score,
+      posted: posted || undefined,
+      fit_reason: fitReason || undefined,
     })
   }
 

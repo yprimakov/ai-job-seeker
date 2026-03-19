@@ -19,44 +19,73 @@ JOBS_DIR = REPO_ROOT / "jobs"
 OUTPUT = JOBS_DIR / "linkedin_results.md"
 TMP_GLOB = ".tmp_results_*.md"
 
-TABLE_HEADER = "| Job Title | Company | Location | Salary | Easy Apply | Score | Fit Reason | URL |"
-TABLE_SEP    = "|-----------|---------|----------|--------|------------|-------|------------|-----|"
+TABLE_HEADER = "| Job Title | Company | Location | Salary | Easy Apply | Score | Posted | Fit Reason | URL |"
+TABLE_SEP    = "|-----------|---------|----------|--------|------------|-------|--------|------------|-----|"
+
+
+def _split_cells(line: str) -> list[str]:
+    """Split a markdown table row into cells, preserving empty cells.
+
+    Slices off the leading and trailing empty strings produced by splitting
+    on the outer pipes, but does NOT remove empty cells in the middle.
+    This prevents column misalignment when optional fields (e.g. salary) are blank.
+    """
+    parts = line.strip().split("|")
+    # parts[0] is empty (before first |), parts[-1] is empty (after last |)
+    return [c.strip() for c in parts[1:-1]]
 
 
 def parse_rows(path: Path) -> list[dict]:
     """Parse all data rows from a linkedin_results.md-style file."""
     rows = []
     in_table = False
+    headers: list[str] = []
+
     for line in path.read_text(encoding="utf-8").splitlines():
-        if line.strip().startswith("| Job Title"):
+        stripped = line.strip()
+        if not stripped.startswith("|"):
+            in_table = False
+            continue
+        if stripped.startswith("|---"):
             in_table = True
             continue
-        if in_table and line.strip().startswith("|---"):
+        if not in_table:
+            # Header row — record column names
+            headers = [c.lower() for c in _split_cells(line)]
             continue
-        if in_table and line.strip().startswith("|"):
-            cells = [c.strip() for c in line.strip().split("|")]
-            cells = [c for c in cells if c != ""]  # drop empty from split
-            if len(cells) < 7:
-                continue
-            url_cell = cells[7] if len(cells) > 7 else ""
-            url_match = re.search(r"\((.+?)\)", url_cell)
-            url = url_match.group(1) if url_match else url_cell
+
+        cells = _split_cells(line)
+        if not cells:
+            continue
+
+        def get(name: str) -> str:
             try:
-                score = int(cells[5])
-            except (ValueError, IndexError):
-                score = 0
-            rows.append({
-                "title":     cells[0],
-                "company":   cells[1],
-                "location":  cells[2],
-                "salary":    cells[3],
-                "easyApply": cells[4].lower() == "yes",
-                "score":     score,
-                "fit_reason": cells[6] if len(cells) > 6 else "",
-                "url":       url,
-            })
-        elif in_table and not line.strip().startswith("|"):
-            in_table = False
+                idx = next(i for i, h in enumerate(headers) if name in h)
+                return cells[idx] if idx < len(cells) else ""
+            except StopIteration:
+                return ""
+
+        url_raw = get("url")
+        url_match = re.search(r"\((.+?)\)", url_raw)
+        url = url_match.group(1) if url_match else url_raw
+
+        try:
+            score = int(get("score"))
+        except (ValueError, TypeError):
+            score = 0
+
+        rows.append({
+            "title":      get("title") or get("job"),
+            "company":    get("company"),
+            "location":   get("location"),
+            "salary":     get("salary"),
+            "easyApply":  get("easy").lower() == "yes",
+            "score":      score,
+            "fit_reason": get("fit"),
+            "posted":     get("posted"),
+            "url":        url,
+        })
+
     return rows
 
 
@@ -99,7 +128,7 @@ def merge(queries: list[str]) -> None:
         ea = "Yes" if row["easyApply"] else "No"
         lines.append(
             f"| {row['title']} | {row['company']} | {row['location']} | "
-            f"{row['salary']} | {ea} | {row['score']} | {row['fit_reason']} | {url_cell} |"
+            f"{row['salary']} | {ea} | {row['score']} | {row.get('posted', '')} | {row['fit_reason']} | {url_cell} |"
         )
 
     lines.append("")
