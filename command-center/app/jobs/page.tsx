@@ -333,7 +333,7 @@ export default function JobsPage() {
     mutateResults()
   }
 
-  const pendingCount = queue.filter(i => i.status === 'pending').length
+  const pendingCount = queue.filter(i => i.status === 'pending' || i.status === 'failed').length
   const availableTitles = titlesData?.titles ?? []
 
   return (
@@ -637,9 +637,9 @@ export default function JobsPage() {
           <div className="flex items-center justify-between">
             <StepBadge n={3} label="Process Queue" />
             <div className="flex items-center gap-3">
-              {pendingCount > 0 && (
+              {queue.length > 0 && (
                 <span className="text-xs text-muted-foreground">
-                  {pendingCount} pending · {queue.filter(i => i.status === 'ready').length} ready · {queue.filter(i => i.status === 'failed').length} failed
+                  {queue.filter(i => i.status === 'pending').length} pending · {queue.filter(i => i.status === 'ready').length} ready · {queue.filter(i => i.status === 'failed').length} failed
                 </span>
               )}
               <button

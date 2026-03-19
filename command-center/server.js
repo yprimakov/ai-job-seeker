@@ -62,7 +62,9 @@ async function processQueue() {
   queueProcessing = true
   try {
     const items = readQueue()
-    const pending = items.filter(i => i.status === 'pending')
+    // Only auto-process non-LinkedIn URLs — LinkedIn requires Playwright auth
+    // and is handled by the manual "Process Queue" button in the UI
+    const pending = items.filter(i => i.status === 'pending' && !i.url.toLowerCase().includes('linkedin.com'))
     if (!pending.length) return
 
     for (const item of pending) {

@@ -130,7 +130,7 @@ def fetch_jd_playwright(url: str) -> str:
 
 def main() -> None:
     items = read_queue()
-    pending = [i for i in items if i.get("status") == "pending"]
+    pending = [i for i in items if i.get("status") in ("pending", "failed")]
 
     if not pending:
         print("No pending items in the queue.")
