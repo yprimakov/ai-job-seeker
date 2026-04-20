@@ -215,4 +215,4 @@ See `documentation/command-center/improvements.md` for the full Command Center b
 - The Q&A system in `tracker.py` is the memory for application questions — always check it before asking Yury for an answer
 - When a question comes up during an application that isn't in the Q&A database, flag it to Yury and store his answer immediately
 - Do not apply to jobs without generating a tailored resume first
-- Do not submit any application without Yury's explicit confirmation
+- When asked to run the pipeline and submit applications, treat that as explicit confirmation to submit
