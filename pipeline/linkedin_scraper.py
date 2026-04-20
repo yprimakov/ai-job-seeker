@@ -386,51 +386,36 @@ def score_jobs(jobs: list[dict]) -> list[dict]:
 
     client = anthropic.Anthropic()
 
-    # Build a numbered job list for the prompt
-    job_lines = []
-    for i, job in enumerate(jobs):
-        parts = [f"{i + 1}. {job.get('title', 'N/A')} at {job.get('company', 'N/A')}"]
-        if job.get("location"):
-            parts.append(f"   Location: {job['location']}")
-        if job.get("salary"):
-            parts.append(f"   Salary: {job['salary']}")
-        if job.get("easyApply"):
-            parts.append("   Easy Apply: yes")
-        job_lines.append("\n".join(parts))
+    def _call_score(batch_jobs, offset):
+        lines = []
+        for i, job in enumerate(batch_jobs):
+            parts = [f"{offset + i + 1}. {job.get('title', 'N/A')} at {job.get('company', 'N/A')}"]
+            if job.get("location"):
+                parts.append(f"   Location: {job['location']}")
+            if job.get("salary"):
+                parts.append(f"   Salary: {job['salary']}")
+            if job.get("easyApply"):
+                parts.append("   Easy Apply: yes")
+            lines.append("\n".join(parts))
+        batch_prompt = f"""Candidate profile:\n{_CANDIDATE_SUMMARY}\n\nJobs to score (numbered list):\n{chr(10).join(lines)}\n\nReturn a JSON array with one object per job, in the same order.\nEach object must have exactly these keys:\n  "index": integer (1-based, matching the job number above),\n  "score": integer 1-5,\n  "fit_reason": string (one sentence explaining the score),\n  "gaps": string (one sentence on the main gap, or empty string if no notable gap)\n\nReturn ONLY the JSON array with no other text."""
+        resp = client.messages.create(
+            model=HAIKU_MODEL,
+            max_tokens=4096,
+            system=_SCORE_SYSTEM,
+            messages=[{"role": "user", "content": batch_prompt}],
+        )
+        raw = resp.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        return json.loads(raw)
 
-    jobs_block = "\n\n".join(job_lines)
-
-    prompt = f"""Candidate profile:
-{_CANDIDATE_SUMMARY}
-
-Jobs to score (numbered list):
-{jobs_block}
-
-Return a JSON array with one object per job, in the same order.
-Each object must have exactly these keys:
-  "index": integer (1-based, matching the job number above),
-  "score": integer 1-5,
-  "fit_reason": string (one sentence explaining the score),
-  "gaps": string (one sentence on the main gap, or empty string if no notable gap)
-
-Return ONLY the JSON array with no other text."""
-
-    response = client.messages.create(
-        model=HAIKU_MODEL,
-        max_tokens=2048,
-        system=_SCORE_SYSTEM,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    raw = response.content[0].text.strip()
-
-    # Strip markdown fences if present
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-
-    scored: list[dict] = json.loads(raw)
+    BATCH = 15
+    scored: list[dict] = []
+    for start in range(0, len(jobs), BATCH):
+        batch = jobs[start:start + BATCH]
+        scored.extend(_call_score(batch, start))
 
     # Merge scores back into the original job dicts
     score_map: dict[int, dict] = {item["index"]: item for item in scored}
@@ -613,9 +598,8 @@ def _cli_main() -> None:
         # launch_persistent_context saves cookies + localStorage to disk
         context = pw.chromium.launch_persistent_context(
             str(user_data_dir),
-            headless=False,
+            headless=True,  # headless=False crashes when run from shell without display
             viewport={"width": 1280, "height": 900},
-            args=["--start-maximized"],
         )
         page = context.new_page()
 
@@ -628,11 +612,11 @@ def _cli_main() -> None:
         login_state = page.evaluate(LOGIN_CHECK_JS)
         if not login_state.get("loggedIn"):
             print(
-                "You do not appear to be logged in to LinkedIn. "
-                "Please log in using the browser window, then press Enter here to continue.\n"
-                "(Your session will be saved so you won't be asked again next time.)"
+                "LinkedIn session not detected in headless mode. "
+                "Session may have expired. Re-run process_queue.py to refresh it."
             )
-            input()
+            context.close()
+            sys.exit(1)
 
         for page_num in range(1, args.pages + 1):
             # Wait for job cards to render
