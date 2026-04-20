@@ -15,6 +15,7 @@ Usage:
 
 from __future__ import annotations
 
+import csv
 import json
 import re
 import subprocess
@@ -32,8 +33,16 @@ except ImportError:
 
 REPO_ROOT = Path(__file__).parent.parent
 QUEUE_FILE = REPO_ROOT / "jobs" / "queue.json"
+TRACKER_FILE = REPO_ROOT / "jobs" / "application_tracker.csv"
+APPLICATIONS_DIR = REPO_ROOT / "applications"
 PIPELINE_DIR = Path(__file__).parent
 LINKEDIN_PROFILE = Path.home() / ".job-seeker-linkedin"
+
+TRACKER_HEADERS = [
+    "Date Applied", "Company", "Job Title", "LinkedIn URL", "Work Mode",
+    "Salary Range", "Easy Apply", "Application Status", "Notes",
+    "Tailored Resume File", "Follow Up Date", "Date Response Received", "Response Type",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -125,6 +134,91 @@ def fetch_jd_playwright(url: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Tracker auto-log
+# ---------------------------------------------------------------------------
+
+def _find_newest_app_folder(after: datetime) -> Path | None:
+    """Return the most recently created application folder created after `after`."""
+    if not APPLICATIONS_DIR.exists():
+        return None
+    candidates = []
+    for d in APPLICATIONS_DIR.iterdir():
+        if not d.is_dir():
+            continue
+        if not (d / "analysis.json").exists():
+            continue
+        mtime = datetime.fromtimestamp(d.stat().st_mtime)
+        if mtime >= after:
+            candidates.append((mtime, d))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    return candidates[0][1]
+
+
+def _read_tracker() -> list[dict]:
+    if not TRACKER_FILE.exists():
+        return []
+    try:
+        with TRACKER_FILE.open(newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            return list(reader)
+    except Exception:
+        return []
+
+
+def _write_tracker(rows: list[dict]) -> None:
+    TRACKER_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with TRACKER_FILE.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=TRACKER_HEADERS, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def log_to_tracker(item: dict, folder: Path) -> None:
+    """Add a 'Tailored' tracker entry for the processed queue item."""
+    try:
+        analysis_path = folder / "analysis.json"
+        analysis = json.loads(analysis_path.read_text(encoding="utf-8")) if analysis_path.exists() else {}
+    except Exception:
+        analysis = {}
+
+    company = analysis.get("company") or item.get("company") or "Unknown"
+    title = analysis.get("job_title") or item.get("title") or "Unknown"
+    work_mode = analysis.get("work_mode") or ""
+    url = item.get("url", "")
+    easy_apply = "Yes" if "linkedin.com" in url.lower() and analysis else ""
+
+    # Check for duplicate (same company + title already in tracker)
+    rows = _read_tracker()
+    norm = lambda s: s.lower().strip()
+    for row in rows:
+        if norm(row.get("Company", "")) == norm(company) and norm(row.get("Job Title", "")) == norm(title):
+            print(f"  Tracker entry already exists for {company} / {title} — skipping.")
+            return
+
+    resume_file = str(folder / "resume.pdf")
+    new_row = {
+        "Date Applied": datetime.now().strftime("%Y-%m-%d"),
+        "Company": company,
+        "Job Title": title,
+        "LinkedIn URL": url,
+        "Work Mode": work_mode,
+        "Salary Range": item.get("salary", ""),
+        "Easy Apply": easy_apply,
+        "Application Status": "Tailored",
+        "Notes": "",
+        "Tailored Resume File": resume_file,
+        "Follow Up Date": "",
+        "Date Response Received": "",
+        "Response Type": "",
+    }
+    rows.append(new_row)
+    _write_tracker(rows)
+    print(f"  Logged to tracker: {company} / {title} [Tailored]")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -171,16 +265,25 @@ def main() -> None:
                 f.write(jd_text)
                 tmp_path = Path(f.name)
 
+            started_at = datetime.now()
             try:
                 result = subprocess.run(
                     [sys.executable, "tailor_resume.py", "--jd", str(tmp_path)],
                     cwd=str(PIPELINE_DIR),
-                    timeout=300,
+                    timeout=900,
                 )
                 if result.returncode != 0:
                     raise RuntimeError(f"tailor_resume.py exited with code {result.returncode}")
             finally:
                 tmp_path.unlink(missing_ok=True)
+
+            # Auto-log to application tracker
+            app_folder = _find_newest_app_folder(started_at)
+            if app_folder:
+                log_to_tracker(item, app_folder)
+                item["outputFolder"] = str(app_folder)
+            else:
+                print("  Warning: could not find generated application folder to log to tracker.")
 
             item["status"] = "ready"
             item["completedAt"] = datetime.now().isoformat()

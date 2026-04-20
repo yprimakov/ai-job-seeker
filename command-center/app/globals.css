@@ -229,6 +229,7 @@
 }
 
 /* ── Status badge gradients ──────────────────────────────────────────────── */
+.badge-tailored     { background: linear-gradient(to right, #f59e0b, #d97706); }
 .badge-applied      { background: linear-gradient(to right, #3b82f6, #06b6d4); }
 .badge-phone-screen { background: linear-gradient(to right, #38bdf8, #4f46e5); }
 .badge-interview    { background: linear-gradient(to right, #a855f7, #ec4899); }

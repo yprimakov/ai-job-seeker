@@ -76,11 +76,12 @@ export interface QARow {
 }
 
 export const STATUS_ORDER = [
-  'Applied', 'Phone Screen', 'Interview', 'Assessment', 'Offer', 'Rejected', 'Ghosted',
+  'Tailored', 'Applied', 'Phone Screen', 'Interview', 'Assessment', 'Offer', 'Rejected', 'Ghosted',
 ]
 
 export function statusBadgeClass(status: string): string {
   const map: Record<string, string> = {
+    'Tailored': 'badge-tailored',
     'Applied': 'badge-applied',
     'Phone Screen': 'badge-phone-screen',
     'Interview': 'badge-interview',

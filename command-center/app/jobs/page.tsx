@@ -4,8 +4,9 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import useSWR from 'swr'
 import {
   Plus, Trash2, RefreshCw, Loader2, ExternalLink, Star, Sparkles,
-  X, Check, AlertTriangle, Play, Square, ChevronDown, ChevronUp, StopCircle,
+  X, Check, AlertTriangle, Play, Square, ChevronDown, ChevronUp, StopCircle, ArrowRight,
 } from 'lucide-react'
+import Link from 'next/link'
 import { SpotlightCard } from '@/components/SpotlightCard'
 import { useWS } from '@/lib/ws-client'
 import { formatDate } from '@/lib/utils'
@@ -54,6 +55,45 @@ function ScoreBadge({ score }: { score?: number }) {
     <span className={`flex items-center gap-1 text-xs font-medium ${color}`}>
       <Star size={10} fill="currentColor" /> {score}
     </span>
+  )
+}
+
+function ReadyCTA({ readyCount }: { readyCount: number }) {
+  const [syncing, setSyncing] = useState(false)
+
+  async function syncAndGo() {
+    setSyncing(true)
+    try {
+      await fetch('/api/jobs/queue/sync', { method: 'POST' })
+    } catch { /* ignore */ } finally {
+      setSyncing(false)
+    }
+    window.location.href = '/applications?status=Tailored'
+  }
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20">
+      <div className="flex-1">
+        <p className="text-sm font-medium text-green-700 dark:text-green-400">
+          {readyCount} application{readyCount !== 1 ? 's' : ''} tailored and ready
+        </p>
+        <p className="text-xs text-green-600/70 dark:text-green-500/70 mt-0.5">
+          Review tailored resumes and submit applications
+        </p>
+      </div>
+      <button
+        onClick={syncAndGo}
+        disabled={syncing}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
+          bg-gradient-to-r from-green-500 to-emerald-600 text-white
+          hover:brightness-110 transition-all shadow-sm shadow-green-500/30 shrink-0
+          disabled:opacity-60">
+        {syncing
+          ? <><Loader2 size={13} className="animate-spin" /> Syncing...</>
+          : <><ArrowRight size={13} /> View Applications</>
+        }
+      </button>
+    </div>
   )
 }
 
@@ -711,6 +751,11 @@ export default function JobsPage() {
                 {processOutput}
               </pre>
             </div>
+          )}
+
+          {/* Ready-items CTA — shown whenever there are ready queue items */}
+          {!processing && queue.some(i => i.status === 'ready') && (
+            <ReadyCTA readyCount={queue.filter(i => i.status === 'ready').length} />
           )}
 
           {/* Manual URL add — collapsed by default */}

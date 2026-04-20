@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import Link from 'next/link'
 import {
   ArrowUpDown, ExternalLink, ChevronUp, ChevronDown, Search, Filter,
-  Download, Ghost, X, CheckSquare,
+  Download, Ghost, X, CheckSquare, Send, Loader2, Sparkles,
 } from 'lucide-react'
 import { SpotlightCard } from '@/components/SpotlightCard'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -36,10 +36,25 @@ export default function ApplicationsPage() {
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [bulkUpdating, setBulkUpdating] = useState(false)
 
-  // Read ?due=1 from URL on mount
+  // Submit state
+  const [submitting, setSubmitting] = useState(false)
+  const [submitOutput, setSubmitOutput] = useState('')
+  const submitOutputRef = useRef<HTMLPreElement>(null)
+
+  // Read URL params on mount
   useEffect(() => {
     if (searchParams.get('due') === '1') setFilterDue(true)
+    if (searchParams.get('status') === 'Tailored') setFilterStatus('Tailored')
   }, [searchParams])
+
+  // Auto-scroll submit output
+  useEffect(() => {
+    if (submitOutputRef.current) {
+      submitOutputRef.current.scrollTop = submitOutputRef.current.scrollHeight
+    }
+  }, [submitOutput])
+
+  const tailoredCount = useMemo(() => rows.filter(r => r['Application Status'] === 'Tailored').length, [rows])
 
   const filtered = useMemo(() => {
     let r = [...rows]
@@ -116,11 +131,66 @@ export default function ApplicationsPage() {
     mutate()
   }
 
+  async function submitSelected() {
+    const ids = [...selected]
+    if (!ids.length) return
+    setSubmitting(true)
+    setSubmitOutput('')
+
+    try {
+      const res = await fetch('/api/pipeline/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      })
+      if (!res.body) throw new Error('No response body')
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        setSubmitOutput(prev => prev + decoder.decode(value, { stream: true }))
+      }
+    } catch (err) {
+      setSubmitOutput(prev => prev + `\nError: ${err}\n`)
+    } finally {
+      setSubmitting(false)
+      setSelected(new Set())
+      mutate()
+    }
+  }
+
+  async function submitAllTailored() {
+    setSubmitting(true)
+    setSubmitOutput('')
+
+    try {
+      const res = await fetch('/api/pipeline/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ allTailored: true }),
+      })
+      if (!res.body) throw new Error('No response body')
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        setSubmitOutput(prev => prev + decoder.decode(value, { stream: true }))
+      }
+    } catch (err) {
+      setSubmitOutput(prev => prev + `\nError: ${err}\n`)
+    } finally {
+      setSubmitting(false)
+      mutate()
+    }
+  }
+
   function exportCSV() {
     const toExport = filtered.filter(r => selected.size === 0 || selected.has(r._id!))
     const headers = ['Date Applied', 'Company', 'Job Title', 'Work Mode', 'Easy Apply',
       'Application Status', 'Match Score', 'ATS Before', 'ATS After', 'Response Type', 'Follow Up Date', 'LinkedIn URL']
-    const rows = toExport.map(r => [
+    const exportRows = toExport.map(r => [
       r['Date Applied'] ?? '',
       r.Company ?? '',
       r['Job Title'] ?? '',
@@ -135,7 +205,7 @@ export default function ApplicationsPage() {
       r['LinkedIn URL'] ?? '',
     ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
 
-    const csv = [headers.join(','), ...rows].join('\n')
+    const csv = [headers.join(','), ...exportRows].join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -145,10 +215,13 @@ export default function ApplicationsPage() {
     URL.revokeObjectURL(url)
   }
 
-  const allStatuses = STATUS_ORDER
   const allModes = ['Remote', 'Hybrid', 'On-site']
   const allSelected = filtered.length > 0 && selected.size === filtered.length
   const someSelected = selected.size > 0
+  const selectedHasTailored = someSelected && [...selected].some(id => {
+    const row = rows.find(r => r._id === id)
+    return row?.['Application Status'] === 'Tailored'
+  })
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -159,13 +232,54 @@ export default function ApplicationsPage() {
             {filtered.length} of {rows.length} shown
           </p>
         </div>
-        <button onClick={exportCSV}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-secondary/60
-            hover:bg-secondary border border-border/60 transition-colors text-muted-foreground hover:text-foreground">
-          <Download size={13} />
-          Export CSV
-        </button>
+        <div className="flex items-center gap-3">
+          {tailoredCount > 0 && (
+            <button
+              onClick={() => setFilterStatus(filterStatus === 'Tailored' ? '' : 'Tailored')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
+                filterStatus === 'Tailored'
+                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-700 dark:text-amber-400'
+                  : 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-500 hover:bg-amber-500/15'
+              }`}
+            >
+              <Sparkles size={13} />
+              {tailoredCount} Tailored
+            </button>
+          )}
+          <button onClick={exportCSV}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-secondary/60
+              hover:bg-secondary border border-border/60 transition-colors text-muted-foreground hover:text-foreground">
+            <Download size={13} />
+            Export CSV
+          </button>
+        </div>
       </div>
+
+      {/* Tailored pending-submission notice */}
+      {tailoredCount > 0 && filterStatus !== 'Tailored' && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm">
+          <Sparkles size={14} className="text-amber-500 shrink-0" />
+          <span className="text-amber-700 dark:text-amber-400 font-medium">
+            {tailoredCount} application{tailoredCount !== 1 ? 's' : ''} tailored and ready to submit
+          </span>
+          <div className="flex-1" />
+          <button
+            onClick={() => setFilterStatus('Tailored')}
+            className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30
+              text-amber-700 dark:text-amber-400 transition-colors font-medium">
+            View Tailored
+          </button>
+          <button
+            onClick={submitAllTailored}
+            disabled={submitting}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg
+              bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold
+              hover:brightness-110 transition-all disabled:opacity-50 shadow-sm shadow-amber-500/30">
+            {submitting ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
+            Submit All
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <SpotlightCard>
@@ -184,7 +298,7 @@ export default function ApplicationsPage() {
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
             className="px-3 py-2 text-sm rounded-lg bg-secondary/60 border border-border/60 focus:outline-none">
             <option value="">All Statuses</option>
-            {allStatuses.map(s => <option key={s}>{s}</option>)}
+            {STATUS_ORDER.map(s => <option key={s}>{s}</option>)}
           </select>
 
           <select value={filterMode} onChange={e => setFilterMode(e.target.value)}
@@ -214,6 +328,17 @@ export default function ApplicationsPage() {
         <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-sm">
           <span className="font-medium text-blue-600 dark:text-blue-400">{selected.size} selected</span>
           <div className="flex-1" />
+          {selectedHasTailored && (
+            <button
+              onClick={submitSelected}
+              disabled={submitting}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+                bg-gradient-to-r from-amber-500 to-orange-500 text-white
+                hover:brightness-110 transition-all disabled:opacity-50 shadow-sm shadow-amber-500/30">
+              {submitting ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
+              Submit {selected.size} Application{selected.size !== 1 ? 's' : ''}
+            </button>
+          )}
           <button onClick={bulkGhost} disabled={bulkUpdating}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
               bg-slate-500/20 hover:bg-slate-500/30 border border-slate-500/30 transition-colors
@@ -230,6 +355,30 @@ export default function ApplicationsPage() {
             <X size={13} />
           </button>
         </div>
+      )}
+
+      {/* Submit output stream */}
+      {(submitOutput || submitting) && (
+        <SpotlightCard>
+          <div className="p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                {submitting && <Loader2 size={11} className="animate-spin text-amber-500" />}
+                Submission Output
+              </p>
+              {!submitting && (
+                <button onClick={() => setSubmitOutput('')}
+                  className="text-muted-foreground hover:text-foreground transition-colors">
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+            <pre ref={submitOutputRef}
+              className="stream-output text-xs p-3 rounded-lg bg-secondary/30 overflow-auto whitespace-pre-wrap max-h-72">
+              {submitOutput || 'Starting...'}
+            </pre>
+          </div>
+        </SpotlightCard>
       )}
 
       {/* Table */}
@@ -261,7 +410,7 @@ export default function ApplicationsPage() {
                   <span className="flex items-center gap-1">Status <SortIcon field="Application Status" /></span>
                 </th>
                 <th title="Match score from JD analysis">Score</th>
-                <th title="ATS keyword coverage: base resume → tailored resume">ATS</th>
+                <th title="ATS keyword coverage: base resume to tailored resume">ATS</th>
                 <th>Response</th>
                 <th className="sortable" onClick={() => toggleSort('Follow Up Date')}>
                   <span className="flex items-center gap-1">Follow-up <SortIcon field="Follow Up Date" /></span>
@@ -272,13 +421,14 @@ export default function ApplicationsPage() {
             <tbody>
               {filtered.map(row => {
                 const due = isFollowUpDue(row['Follow Up Date']) && row['Application Status'] === 'Applied'
+                const isTailored = row['Application Status'] === 'Tailored'
                 const score = row.match_score
                 const scoreColor = score == null ? '' : score >= 80 ? 'text-green-600 dark:text-green-400' : score >= 60 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
                 const before = row.ats_coverage_before
                 const after = row.ats_coverage_after
                 const isSelected = row._id != null && selected.has(row._id)
                 return (
-                  <tr key={row._id} className={`${due ? 'bg-orange-500/5' : ''} ${isSelected ? 'bg-blue-500/5' : ''}`}>
+                  <tr key={row._id} className={`${due ? 'bg-orange-500/5' : ''} ${isTailored ? 'bg-amber-500/5' : ''} ${isSelected ? 'bg-blue-500/5' : ''}`}>
                     <td className="px-3">
                       <button onClick={() => row._id != null && toggleSelect(row._id)}
                         className="text-muted-foreground hover:text-foreground transition-colors">
@@ -330,7 +480,7 @@ export default function ApplicationsPage() {
                       {before != null || after != null ? (
                         <span className="flex items-center gap-1">
                           <span className="text-muted-foreground">{before ?? '?'}%</span>
-                          <span className="text-muted-foreground/40">→</span>
+                          <span className="text-muted-foreground/40">to</span>
                           <span className={after != null ? (after >= 70 ? 'text-green-600 dark:text-green-400' : after >= 50 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400') : 'text-muted-foreground'}>
                             {after ?? '?'}%
                           </span>
@@ -347,6 +497,16 @@ export default function ApplicationsPage() {
                     </td>
                     <td>
                       <div className="flex items-center gap-2">
+                        {isTailored && (
+                          <button
+                            onClick={() => { setSelected(new Set([row._id!])); submitSelected() }}
+                            disabled={submitting}
+                            title="Submit this application"
+                            className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400
+                              hover:text-amber-500 transition-colors disabled:opacity-50">
+                            <Send size={10} />
+                          </button>
+                        )}
                         <Link href={`/applications/${row._slug ?? row._id}`}
                           className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-colors">
                           View

@@ -484,9 +484,12 @@ export default function ApplicationDetailPage() {
     </div>
   )
 
-  const resumePath = row['Tailored Resume File']
-  const analysisPath = resumePath?.replace(/resume\.pdf$/i, 'analysis.json')
-  const pdfUrl = resumePath ? `/api/file?path=${encodeURIComponent(resumePath)}` : null
+  // Normalize: Tailored Resume File may store resume.md or resume.pdf — derive the folder
+  const resumeFile = row['Tailored Resume File'] ?? ''
+  const appFolder = resumeFile.replace(/[/\\](resume\.(md|pdf))$/i, '')
+  const pdfPath = appFolder ? `${appFolder}/resume.pdf` : ''
+  const analysisPath = appFolder ? `${appFolder}/analysis.json` : ''
+  const pdfUrl = pdfPath ? `/api/file?path=${encodeURIComponent(pdfPath)}` : null
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -711,7 +714,7 @@ export default function ApplicationDetailPage() {
               <div className="p-5">
                 {activeTab === 'resume' && (
                   <div>
-                    {resumePath && pdfUrl ? (
+                    {pdfPath && pdfUrl ? (
                       <div className="space-y-4">
                         {/* Thumbnail — scaled-down iframe of page 1 */}
                         <button
@@ -742,7 +745,7 @@ export default function ApplicationDetailPage() {
                         {/* Path + open link */}
                         <div className="flex items-center justify-between gap-3">
                           <p className="text-xs text-muted-foreground font-mono truncate flex-1 min-w-0">
-                            {resumePath}
+                            {pdfPath}
                           </p>
                           <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-xs text-muted-foreground
