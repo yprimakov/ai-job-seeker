@@ -43,3 +43,11 @@ Thumbs.db
 # Stray temp files
 *.tmp
 *.bat
+temp/
+
+# Playwright MCP console logs
+.playwright-mcp/
+
+# Pipeline debug artifacts
+pipeline/debug_*.py
+pipeline/debug_*.png
