@@ -108,7 +108,7 @@ Return only valid JSON, no markdown fences, no explanation.
 def analyze_jd(client: anthropic.Anthropic, jd_text: str) -> dict:
     print("> Analyzing job description...")
     response = client.messages.create(
-        model="claude-opus-4-6",
+        model="claude-sonnet-4-6",
         max_tokens=2000,
         messages=[{"role": "user", "content": ANALYSIS_PROMPT.format(jd=jd_text)}],
     )
@@ -156,7 +156,7 @@ Return ONLY the tailored resume in Markdown+HTML. No explanations, no preamble, 
 def tailor_resume(client: anthropic.Anthropic, base_resume: str, analysis: dict) -> str:
     print("> Generating tailored resume...")
     response = client.messages.create(
-        model="claude-opus-4-6",
+        model="claude-sonnet-4-6",
         max_tokens=4000,
         messages=[
             {
@@ -207,7 +207,7 @@ Format: 3 short paragraphs. No salutation, no sign-off. Just the body copy.
 def generate_cover_snippet(client: anthropic.Anthropic, analysis: dict, candidate_name: str = "") -> str:
     print("> Generating cover letter snippet...")
     response = client.messages.create(
-        model="claude-opus-4-6",
+        model="claude-sonnet-4-6",
         max_tokens=800,
         messages=[
             {
