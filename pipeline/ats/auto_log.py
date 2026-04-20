@@ -123,7 +123,8 @@ def find_resume_for_application(company: str, title: str) -> str:
     if not apps_dir.exists():
         return ""
 
-    company_slug = company.lower().replace(" ", "_")
+    import re as _re
+    company_slug = _re.sub(r"[^a-z0-9]+", "_", company.lower()).strip("_")
     for folder in sorted(apps_dir.iterdir(), reverse=True):
         if not folder.is_dir():
             continue

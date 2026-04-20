@@ -31,6 +31,11 @@ def detect(url: str) -> str:
     for ats_name, patterns in _SIGNATURES.items():
         if any(p in url_lower for p in patterns):
             return ats_name
+    # Query-param fallbacks for white-labeled / custom-domain setups
+    if "gh_jid=" in url_lower or "gh_src=" in url_lower:
+        return "greenhouse"
+    if "lever-source=" in url_lower or "lever_source=" in url_lower:
+        return "lever"
     return "unknown"
 
 
